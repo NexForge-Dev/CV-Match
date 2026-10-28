@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
-import { env } from "@/lib/env";
+import { aiProvider, env } from "@/lib/env";
 import { getDictionary } from "@/lib/i18n/server";
 import { analysesAvailable, getCreditSummary } from "@/lib/server/credits";
 import { PageHeader } from "@/components/ui";
@@ -38,7 +38,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
         maxUploadMb={Math.round(env().UPLOAD_MAX_BYTES / 1024 / 1024)}
         available={analysesAvailable(credits)}
         preselectResumeId={preselect ?? null}
-        aiEnabled={env().AI_PROVIDER === "anthropic" && Boolean(env().ANTHROPIC_API_KEY)}
+        aiEnabled={aiProvider() === "anthropic"}
       />
     </div>
   );

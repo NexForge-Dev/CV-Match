@@ -1,4 +1,4 @@
-import { env } from "@/lib/env";
+import { aiProvider, env } from "@/lib/env";
 import { log } from "@/lib/log";
 import { cvToPlainText, type CvData, type CvLanguage } from "@/lib/cv/schema";
 import { computeScore, matchRequirements, type MatchResult, type ScoreBreakdown } from "@/lib/analysis/match";
@@ -20,8 +20,8 @@ export function setProviderForTests(p: AiProvider | null) {
 export function getProvider(): AiProvider {
   if (providerOverride) return providerOverride;
   const e = env();
-  if (e.AI_PROVIDER === "anthropic" && e.ANTHROPIC_API_KEY) {
-    return new AnthropicProvider(e.ANTHROPIC_API_KEY, e.AI_MODEL, e.AI_MAX_INPUT_CHARS);
+  if (aiProvider(e) === "anthropic") {
+    return new AnthropicProvider(e.ANTHROPIC_API_KEY!, e.AI_MODEL, e.AI_MAX_INPUT_CHARS);
   }
   return heuristicProvider;
 }

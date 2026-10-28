@@ -13,7 +13,8 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
-  AI_PROVIDER: z.enum(["heuristic", "anthropic"]).default("heuristic"),
+  // Unset: Claude is used automatically when ANTHROPIC_API_KEY is present; "heuristic" forces the rule-based engine.
+  AI_PROVIDER: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["heuristic", "anthropic"]).optional()),
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("claude-opus-5-5"),
   AI_MAX_INPUT_CHARS: intFromEnv(40000),
@@ -51,6 +52,12 @@ export function requireEnv<K extends keyof ServerEnv>(key: K): NonNullable<Serve
     throw new Error(`Missing required environment variable: ${String(key)}`);
   }
   return value as NonNullable<ServerEnv[K]>;
+}
+
+/** Effective AI provider: explicit AI_PROVIDER, otherwise Claude when a key is configured. */
+export function aiProvider(e: ServerEnv = env()): "heuristic" | "anthropic" {
+  if (e.AI_PROVIDER) return e.AI_PROVIDER === "anthropic" && !e.ANTHROPIC_API_KEY ? "heuristic" : e.AI_PROVIDER;
+  return e.ANTHROPIC_API_KEY ? "anthropic" : "heuristic";
 }
 
 export function isSupabaseConfigured(): boolean {

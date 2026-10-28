@@ -37,8 +37,8 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
    | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
    | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (secret) |
-   | `AI_PROVIDER` | `heuristic` or `anthropic` |
-   | `ANTHROPIC_API_KEY` | only if `AI_PROVIDER=anthropic` |
+   | `ANTHROPIC_API_KEY` | optional — when set, Claude is used automatically |
+   | `AI_PROVIDER` | optional — `heuristic` forces the free rule-based engine |
    | `STRIPE_SECRET_KEY` | `sk_test_...` then `sk_live_...` |
    | `STRIPE_WEBHOOK_SECRET` | from the Stripe webhook endpoint |
    | `CRON_SECRET` | random string (`openssl rand -hex 32`) |
@@ -65,6 +65,10 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 
 ## 5. Post-deploy checklist
 
+- [ ] `vercel env pull .env.production.local && ENV_FILE=.env.production.local npm run verify:keys` reports no blocking issues
+      (keys valid, migrations applied, private bucket, Stripe mode and webhook endpoint, Claude reachable).
+- [ ] `GET https://YOUR_DOMAIN/api/health` returns `{"ok":true,"database":true}`.
+
 - [ ] Sign up with a new email, confirm it, log in.
 - [ ] Upload a PDF and a DOCX CV; paste a job; run the free analysis.
 - [ ] Accept suggestions → new version created; export PDF and DOCX.
@@ -75,7 +79,7 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 
 ## Optional: AI provider
 
-`AI_PROVIDER=anthropic` uses Claude (`AI_MODEL`, default `claude-opus-5-5`) for CV parsing,
+Setting `ANTHROPIC_API_KEY` switches to Claude (`AI_MODEL`, default `claude-opus-5-5`) for CV parsing,
 requirement extraction, suggestion wording, cover letters and interview prep.
 Requirement matching and the score stay deterministic, and every model output passes the same
 grounding and fact checks as the rule-based engine. If the API fails, the app falls back to the rule-based engine.

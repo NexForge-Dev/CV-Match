@@ -72,10 +72,10 @@ npm run dev                  # http://localhost:3000
 Local Supabase runs on ports **565xx** (see `supabase/config.toml`) to avoid clashing with other local projects.
 Email confirmation is disabled locally; emails sent by Auth can be viewed in Mailpit (`npx supabase status` shows the URL).
 
-Without `ANTHROPIC_API_KEY` the app runs fully on the deterministic engine. To use Claude:
+Without `ANTHROPIC_API_KEY` the app runs fully on the deterministic engine. To use Claude, just add the key
+(Claude is selected automatically; set `AI_PROVIDER=heuristic` to force the free engine):
 
 ```bash
-AI_PROVIDER=anthropic
 ANTHROPIC_API_KEY=sk-ant-...
 ```
 
@@ -90,6 +90,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `npm test` | Unit + integration tests (Vitest, PGlite) |
 | `npm run check` | lint + typecheck + tests + build |
 | `npm run smoke` | End-to-end test against a running app and Supabase (`BASE_URL=http://localhost:3000`) |
+| `npm run verify:keys` | Launch check: validates the real Supabase, Anthropic and Stripe keys, migrations, test/live mode and the Stripe webhook endpoint (no charges) |
 | `npm run screenshots` | Phone and desktop screenshots of every page with real data (headless Chrome/Edge), saved to `./screenshots` |
 
 ### What the tests cover
@@ -116,7 +117,7 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase connection |
-| `AI_PROVIDER` (`heuristic`/`anthropic`), `ANTHROPIC_API_KEY`, `AI_MODEL` | AI provider |
+| `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_PROVIDER` (optional: `heuristic` forces the free engine) | AI provider — Claude is used automatically when the key is set |
 | `UPLOAD_MAX_BYTES` | Upload limit (default 5 MB) |
 | `STORE_ORIGINAL_FILES` | Keep original files in Storage (default `false`: parsed in memory and discarded) |
 | `DOCUMENT_RETENTION_DAYS` | Retention for stored originals (daily cron) |
@@ -177,7 +178,8 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Vercel + Supabase Cloud + Stripe
 2. Create a Stripe account; complete the test-mode flow from `docs/PAYMENTS.md`; then switch to live keys and a live webhook.
 3. Set the environment variables in your host (see `.env.example`).
 4. Fill in the legal pages: replace `privacy@cvmatch.example` and every `[OPERATOR: ...]` placeholder (`src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
-5. Optionally enable `AI_PROVIDER=anthropic` for higher-quality parsing and wording.
+5. Optionally add `ANTHROPIC_API_KEY` for higher-quality parsing, wording and translation.
+6. Pull the production variables and run `ENV_FILE=.env.production.local npm run verify:keys` — it must report no blocking issues.
 
 ## Known limitations
 
