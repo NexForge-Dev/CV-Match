@@ -109,6 +109,12 @@ export const SKILLS: SkillEntry[] = [
   { id: "french", label: "French", aliases: ["french", "frances", "francês"], category: "spoken" },
   { id: "german", label: "German", aliases: ["german", "alemao", "aleman"], category: "spoken" },
   { id: "catalan", label: "Catalan", aliases: ["catalan", "catala", "catalao"], category: "spoken" },
+  { id: "italian", label: "Italian", aliases: ["italian", "italiano"], category: "spoken" },
+  { id: "dutch", label: "Dutch", aliases: ["dutch", "holandes", "neerlandes"], category: "spoken" },
+  { id: "chinese", label: "Chinese", aliases: ["chinese", "mandarin", "chines", "chino", "mandarim"], category: "spoken" },
+  { id: "japanese", label: "Japanese", aliases: ["japanese", "japones"], category: "spoken" },
+  { id: "russian", label: "Russian", aliases: ["russian", "russo", "ruso"], category: "spoken" },
+  { id: "arabic", label: "Arabic", aliases: ["arabic", "arabe"], category: "spoken" },
   // Soft skills (often ambiguous to prove from a CV)
   { id: "communication", label: "Communication", aliases: ["communication", "comunicacao", "comunicacion"], category: "soft" },
   { id: "leadership", label: "Leadership", aliases: ["leadership", "lideranca", "liderazgo", "team lead", "tech lead"], category: "soft" },
@@ -165,6 +171,58 @@ export function findSkills(text: string): SkillEntry[] {
 /** True when the text mentions the given skill by any of its aliases. */
 export function mentionsSkill(text: string, skill: SkillEntry): boolean {
   return findSkills(text).some((s) => s.id === skill.id);
+}
+
+// ---------- mention context ----------
+
+/**
+ * How a skill is mentioned. "No experience with Kubernetes" or "currently
+ * learning Rust" mention a technology without evidencing experience with it,
+ * so they must never count as proof (matching) nor as permission to write the
+ * skill into the CV (fact guard).
+ */
+export type MentionContext = "positive" | "learning" | "negated";
+
+// Cue directly before the skill ("without docker", "sem docker", "sin docker").
+const NEG_DIRECT = /\b(without|sem|sin)\s*$/;
+// Cue phrase followed by at most three words (e.g. "no experience with java or kotlin").
+const NEG_PHRASE =
+  /\b(no|little|limited|zero) (prior |professional |hands-on )?(experience|knowledge|exposure)|\bnot (yet )?(familiar|experienced|proficient)|\bnever (used|worked)|\bnao (tenho|possuo|conheco|domino|uso|usei|trabalhei)|\bnunca (usei|trabalhei|use|trabaje|he usado|he trabajado)|\b(sem|sin) (experiencia|conhecimento|conocimiento)|\bno (tengo|conozco|domino|manejo|he usado|he trabajado)/;
+const LEARN_PHRASE =
+  /\b(currently )?(learning|studying)|\binterested in|\b(want|would like|plan) to learn|\b(aprendendo|estudando|aprendiendo|estudiando)|\binteresse em|\binteres en|\b(quero|gostaria de|quiero|me gustaria) aprender/;
+const TAIL_WORDS = String.raw`(\s+\S+){0,3}\s*$`;
+const NEG_BEFORE = new RegExp(`(${NEG_PHRASE.source})${TAIL_WORDS}`);
+const LEARN_BEFORE = new RegExp(`(${LEARN_PHRASE.source})${TAIL_WORDS}`);
+
+function contextAt(hay: string, start: number): MentionContext {
+  const window = hay.slice(Math.max(0, start - 80), start);
+  // Only look inside the current clause.
+  const clause = window.split(/[.;:!?()\n]|\b(?:but|mas|pero|however|porem|sin embargo)\b/).pop() ?? "";
+  if (NEG_DIRECT.test(clause) || NEG_BEFORE.test(clause)) return "negated";
+  if (LEARN_BEFORE.test(clause)) return "learning";
+  return "positive";
+}
+
+const CONTEXT_RANK: Record<MentionContext, number> = { positive: 2, learning: 1, negated: 0 };
+
+/** Best context in which `text` mentions `skill` (positive > learning > negated), or null if not mentioned. */
+export function mentionContext(text: string, skill: SkillEntry): MentionContext | null {
+  const hay = normalize(text).replace(/\bhttps?:\/\/\S+/g, " ");
+  const all = SKILLS.flatMap((s) => spansFor(hay, s));
+  const own = all.filter(
+    (sp) => sp.skillId === skill.id && !all.some((o) => o.skillId !== sp.skillId && o.start <= sp.start && o.end >= sp.end && o.end - o.start > sp.end - sp.start),
+  );
+  let best: MentionContext | null = null;
+  for (const sp of own) {
+    const ctx = contextAt(hay, sp.start);
+    if (best === null || CONTEXT_RANK[ctx] > CONTEXT_RANK[best]) best = ctx;
+  }
+  return best;
+}
+
+/** Skills the text gives positive evidence for (negated or "learning" mentions excluded). */
+export function findEvidencedSkills(text: string): SkillEntry[] {
+  return findSkills(text).filter((s) => mentionContext(text, s) === "positive");
 }
 
 /** All normalized terms of every taxonomy skill — used by the fact guard to detect new technologies. */

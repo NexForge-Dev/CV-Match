@@ -52,6 +52,8 @@ type Props = {
   suggestions: SuggestionRow[];
   letter: string | null;
   interview: InterviewItem[] | null;
+  /** Which extras were produced by the rule-based fallback because the AI failed. */
+  extrasFallback?: { letter?: boolean; interview?: boolean };
 };
 
 const STATUS_STYLE: Record<MatchStatus, { cls: string; Icon: typeof CheckCircle2 }> = {
@@ -61,7 +63,7 @@ const STATUS_STYLE: Record<MatchStatus, { cls: string; Icon: typeof CheckCircle2
   ambiguous: { cls: "bg-slate-100 text-slate-700 border-slate-200", Icon: HelpCircle },
 };
 
-export function AnalysisView({ initialTab, analysis, suggestions: initialSuggestions, letter: initialLetter, interview: initialInterview }: Props) {
+export function AnalysisView({ initialTab, analysis, suggestions: initialSuggestions, letter: initialLetter, interview: initialInterview, extrasFallback = {} }: Props) {
   const { t, locale } = useI18n();
   const a = t.analysis;
   const router = useRouter();
@@ -70,6 +72,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
   const [suggestions, setSuggestions] = useState(initialSuggestions);
   const [letter, setLetter] = useState(initialLetter);
   const [interview, setInterview] = useState(initialInterview);
+  const [fallback, setFallback] = useState(extrasFallback);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; resumeId: string } | null>(null);
@@ -117,11 +120,17 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
   async function generate(kind: "cover_letter" | "interview_prep") {
     setError(null);
     setBusy(kind);
-    const res = await api<{ content: { text?: string; items?: InterviewItem[] } }>(`/api/analyses/${analysis.id}/extras`, { method: "POST", json: { kind } });
+    const res = await api<{ content: { text?: string; items?: InterviewItem[]; fallback?: boolean } }>(`/api/analyses/${analysis.id}/extras`, { method: "POST", json: { kind } });
     setBusy(null);
     if (!res.ok) return setError(errorMessage(t, res.error, res.detail));
-    if (kind === "cover_letter") setLetter(res.data.content.text ?? "");
-    else setInterview(res.data.content.items ?? []);
+    const usedFallback = Boolean(res.data.content.fallback);
+    if (kind === "cover_letter") {
+      setLetter(res.data.content.text ?? "");
+      setFallback((f) => ({ ...f, letter: usedFallback }));
+    } else {
+      setInterview(res.data.content.items ?? []);
+      setFallback((f) => ({ ...f, interview: usedFallback }));
+    }
   }
 
   const tabs = [
@@ -152,7 +161,8 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
         <DeleteButton url={`/api/analyses/${analysis.id}`} label={a.deleteAnalysis} redirectTo="/analyses" />
       </div>
 
-      <section className="card mb-6 grid gap-6 p-6 md:grid-cols-[auto_1fr]">
+      {analysis.provider === "heuristic_fallback" && <div className="mb-4"><Alert tone="warn">{a.fallbackNotice}</Alert></div>}
+      <section className="card mb-6 grid gap-6 p-4 sm:p-6 md:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center">
           <ScoreRing score={analysis.score} size={120} />
           <p className="mt-2 text-sm font-semibold">{a.scoreLabel}</p>
@@ -228,7 +238,9 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                   {res.relatedSkills.length > 0 && <p className="mt-1 text-xs text-ink-soft">{a.related}: {res.relatedSkills.join(", ")}</p>}
                   {res.evidence.length > 0 && (
                     <div className="mt-3 space-y-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{a.evidence}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                        {res.notes.includes("negated_context") || res.notes.includes("learning_context") ? a.mentionInCv : a.evidence}
+                      </p>
                       {res.evidence.map((ev, i) => (
                         <blockquote key={i} className="border-l-2 border-brand-200 pl-3 text-sm text-ink-soft">
                           <span className="mr-1 text-xs text-ink-muted">[{a.sections[ev.section] ?? ev.section}]</span>
@@ -267,7 +279,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
               ))}
             </ul>
           )}
-          <div className="sticky bottom-0 mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50/95 py-4 backdrop-blur">
+          <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50/95 pt-4 backdrop-blur">
             <button className="btn-primary" disabled={acceptedCount === 0 || busy !== null} onClick={applyAccepted}>
               {busy === "apply" && <Loader2 className="h-4 w-4 animate-spin" />}
               {busy === "apply" ? a.applying : a.apply(acceptedCount)}
@@ -284,8 +296,9 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           busy={busy === "cover_letter"}
           onGenerate={() => generate("cover_letter")}
         >
+          {letter !== null && fallback.letter && <Alert tone="warn">{a.fallbackNotice}</Alert>}
           {letter !== null && (
-            <div className="card p-6">
+            <div className="card p-4 sm:p-6">
               <div className="mb-3 flex justify-end">
                 <button
                   className="btn-secondary btn-sm"
@@ -298,7 +311,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                   <Copy className="h-3.5 w-3.5" /> {copied ? a.copied : a.copy}
                 </button>
               </div>
-              <textarea className="input min-h-[420px] font-serif text-sm leading-relaxed" value={letter} onChange={(e) => setLetter(e.target.value)} />
+              <textarea className="input min-h-[420px] font-serif leading-relaxed sm:text-sm" value={letter} onChange={(e) => setLetter(e.target.value)} />
             </div>
           )}
         </ExtraPanel>
@@ -312,6 +325,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           busy={busy === "interview_prep"}
           onGenerate={() => generate("interview_prep")}
         >
+          {interview && fallback.interview && <Alert tone="warn">{a.fallbackNotice}</Alert>}
           {interview && (
             <ol className="space-y-3">
               {interview.map((item, i) => (
@@ -395,7 +409,7 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
           </label>
           {s.confirmed_by_user && (
             <textarea
-              className="input text-sm"
+              className="input sm:text-sm"
               rows={2}
               placeholder={a.confirmPlaceholder}
               defaultValue={s.edited_text ?? ""}
@@ -414,7 +428,7 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{a.suggested}</p>
             {editing ? (
               <div className="mt-1 space-y-2">
-                <textarea className="input text-sm" rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={6000} />
+                <textarea className="input sm:text-sm" rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={6000} />
                 <div className="flex gap-2">
                   <button className="btn-primary btn-sm" onClick={() => { onPatch({ editedText: draft === s.suggested_text ? null : draft }); setEditing(false); }}>{t.common.save}</button>
                   <button className="btn-ghost btn-sm" onClick={() => { setDraft(finalText); setEditing(false); }}>{t.common.cancel}</button>

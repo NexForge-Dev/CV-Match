@@ -38,6 +38,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
         maxUploadMb={Math.round(env().UPLOAD_MAX_BYTES / 1024 / 1024)}
         available={analysesAvailable(credits)}
         preselectResumeId={preselect ?? null}
+        aiEnabled={env().AI_PROVIDER === "anthropic" && Boolean(env().ANTHROPIC_API_KEY)}
       />
     </div>
   );

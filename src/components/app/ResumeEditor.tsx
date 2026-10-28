@@ -72,6 +72,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
     router.refresh();
   }
 
+  // Labels written by the server use a stable prefix so they can be shown in the UI language.
+  const versionLabel = (l: string) => (l.startsWith("confirmed_by_user:") ? `${r.confirmedByUser}: ${l.slice("confirmed_by_user:".length).trim()}` : l);
+
   const exportUrl = (format: "pdf" | "docx") => `/api/export?versionId=${selected.id}&format=${format}&template=${settings.template}&language=${settings.language}`;
 
   return (
@@ -80,7 +83,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
         <div>
           <Link href="/resumes" className="text-sm text-ink-muted hover:text-ink">← {t.nav.resumes}</Link>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">{resume.title}</h1>
-          <p className="text-sm text-ink-muted">{r.version(selected.number)} · {r.origin[selected.origin] ?? selected.origin}{selected.label ? ` · ${selected.label}` : ""}</p>
+          <p className="text-sm text-ink-muted">{r.version(selected.number)} · {r.origin[selected.origin] ?? selected.origin}{selected.label ? ` · ${versionLabel(selected.label)}` : ""}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <a href={exportUrl("pdf")} className={`btn-secondary ${dirty ? "pointer-events-none opacity-50" : ""}`} aria-disabled={dirty}><Download className="h-4 w-4" /> {r.exportPdf}</a>
@@ -97,7 +100,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
         <aside className="space-y-4">
           <div className="card p-4">
             <h2 className="mb-2 text-sm font-semibold">{r.versions}</h2>
-            <ul className="max-h-[340px] space-y-1 overflow-y-auto">
+            <ul className="max-h-[220px] space-y-1 overflow-y-auto xl:max-h-[340px]">
               {versions.map((v) => (
                 <li key={v.id}>
                   <button
@@ -109,7 +112,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
                   >
                     <span className="font-medium">{r.version(v.number)}</span>
                     <span className="block text-xs text-ink-muted">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
-                    {v.label && <span className="block truncate text-xs text-ink-soft">{v.label}</span>}
+                    {v.label && <span className="block truncate text-xs text-ink-soft">{versionLabel(v.label)}</span>}
                   </button>
                 </li>
               ))}
@@ -121,8 +124,13 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
             )}
           </div>
 
-          <div className="card space-y-3 p-4">
-            <h2 className="text-sm font-semibold">{r.settings}</h2>
+          {/* Collapsed by default so phones reach the editor quickly. */}
+          <details className="card group p-4 [&_summary::-webkit-details-marker]:hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
+              {r.settings}
+              <span className="text-ink-muted transition group-open:rotate-180" aria-hidden>▾</span>
+            </summary>
+            <div className="mt-3 space-y-3">
             <div>
               <label className="label" htmlFor="rs-title">{t.wizard.cvTitle}</label>
               <input id="rs-title" className="input" value={settings.title} maxLength={200} onChange={(e) => setSettings({ ...settings, title: e.target.value })} />
@@ -141,7 +149,8 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
               </select>
             </div>
             <button className="btn-secondary btn-sm w-full" onClick={saveSettings} disabled={busy !== null}>{busy === "settings" ? t.common.saving : t.common.save}</button>
-          </div>
+            </div>
+          </details>
 
           <DeleteButton url={`/api/resumes/${resume.id}`} label={r.deleteCv} redirectTo="/resumes" />
         </aside>
@@ -157,9 +166,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
 
           {view === "editor" && (
             <div className="grid gap-6 2xl:grid-cols-2">
-              <div className="card p-6">
+              <div className="card p-4 sm:p-6">
                 <CvForm value={draft} onChange={setDraft} formKey={selected.id} />
-                <div className="sticky bottom-0 mt-6 flex flex-wrap items-end gap-3 border-t border-slate-200 bg-white py-4">
+                <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-end gap-3 border-t border-slate-200 bg-white pt-4">
                   <div className="min-w-[200px] flex-1">
                     <label className="label" htmlFor="v-label">{r.versionLabel}</label>
                     <input id="v-label" className="input" value={label} maxLength={200} onChange={(e) => setLabel(e.target.value)} />

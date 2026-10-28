@@ -38,8 +38,8 @@ export default async function AnalysisPage({ params, searchParams }: { params: P
   const job = one(analysis.job_descriptions as Rel<{ id: string; title: string; company: string; location: string; url: string }>);
   const version = one(analysis.resume_versions as Rel<{ version_number: number }>);
   const resume = one(analysis.resumes as Rel<{ title: string }>);
-  const letter = extras?.find((e) => e.kind === "cover_letter")?.content as { text: string } | undefined;
-  const interview = extras?.find((e) => e.kind === "interview_prep")?.content as { items: { requirement: string; question: string; evidence: string[]; tip: string }[] } | undefined;
+  const letter = extras?.find((e) => e.kind === "cover_letter")?.content as { text: string; fallback?: boolean } | undefined;
+  const interview = extras?.find((e) => e.kind === "interview_prep")?.content as { items: { requirement: string; question: string; evidence: string[]; tip: string }[]; fallback?: boolean } | undefined;
 
   return (
     <AnalysisView
@@ -64,6 +64,7 @@ export default async function AnalysisPage({ params, searchParams }: { params: P
       suggestions={(suggestions ?? []) as SuggestionRow[]}
       letter={letter?.text ?? null}
       interview={interview?.items ?? null}
+      extrasFallback={{ letter: letter?.fallback, interview: interview?.fallback }}
     />
   );
 }

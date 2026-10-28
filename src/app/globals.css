@@ -30,14 +30,25 @@ body {
   .btn-danger {
     @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
   }
+  /* 36px touch target on phones, compact on larger screens. */
   .btn-sm {
-    @apply px-3 py-1.5 text-xs;
+    @apply min-h-9 px-3 py-1.5 text-xs sm:min-h-0;
   }
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-card;
   }
+  /* 16px text on phones prevents iOS from zooming into focused fields. */
   .input {
-    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20;
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-ink placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 sm:text-sm;
+  }
+  /* Textareas grow with their content where supported (falls back to rows elsewhere). */
+  textarea.input {
+    field-sizing: content;
+    min-height: 4.5rem;
+    max-height: 28rem;
+  }
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
   .label {
     @apply mb-1 block text-sm font-medium text-ink-soft;

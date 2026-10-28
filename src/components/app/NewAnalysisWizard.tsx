@@ -24,6 +24,7 @@ export function NewAnalysisWizard({
   maxUploadMb,
   available,
   preselectResumeId,
+  aiEnabled = false,
 }: {
   existing: ExistingResume[];
   savedJobs: SavedJob[];
@@ -31,6 +32,8 @@ export function NewAnalysisWizard({
   maxUploadMb: number;
   available: number;
   preselectResumeId: string | null;
+  /** False when only the rule-based engine is available (it cannot translate CV content). */
+  aiEnabled?: boolean;
 }) {
   const { t } = useI18n();
   const w = t.wizard;
@@ -316,6 +319,7 @@ export function NewAnalysisWizard({
               {LANGS.map((l) => <option key={l} value={l}>{t.cvLanguage[l]}</option>)}
             </select>
           </div>
+          {!aiEnabled && <p className="mt-2 max-w-xl text-xs text-ink-muted">{w.heuristicLanguageNote}</p>}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button className="btn-secondary" onClick={() => setStep(extraction ? 1 : 0)} disabled={busy !== null}>{t.common.back}</button>

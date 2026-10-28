@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { CvData } from "@/lib/cv/schema";
 import type { Requirement } from "./requirements";
-import { getSkill, mentionsSkill } from "./taxonomy";
+import { getSkill, mentionContext, mentionsSkill, type MentionContext } from "./taxonomy";
 import { containsTerm, jaccard, normalize, tokenize } from "./text";
 
 export const MATCH_STATUSES = ["found", "partial", "not_found", "ambiguous"] as const;
@@ -25,6 +25,8 @@ export const NOTE_CODES = [
   "soft_skill_needs_example",
   "not_in_document",
   "ambiguous_requirement",
+  "learning_context",
+  "negated_context",
 ] as const;
 export type NoteCode = (typeof NOTE_CODES)[number];
 
@@ -134,10 +136,11 @@ export function languageRank(level: string | null | undefined): number | null {
 
 // ---------- matching ----------
 
-function skillEvidence(chunks: Chunk[], skillId: string): Chunk[] {
+/** Chunks that mention the skill in the given context (default: positive evidence only). */
+function skillEvidence(chunks: Chunk[], skillId: string, context: MentionContext = "positive"): Chunk[] {
   const skill = getSkill(skillId);
   if (!skill) return [];
-  return chunks.filter((c) => mentionsSkill(c.text, skill));
+  return chunks.filter((c) => mentionContext(c.text, skill) === context);
 }
 
 function toEvidence(chunks: Chunk[]): Evidence[] {
@@ -186,6 +189,15 @@ function matchSkill(req: Requirement, cv: CvData, chunks: Chunk[]): MatchResult 
       notes: relatedHits.length ? ["related_skill"] : [],
       relatedSkills: relatedHits.map((r) => getSkill(r.id)!.label),
     };
+  }
+  // Mentioned only as something being learned, or explicitly without experience: never proof.
+  const learning = req.skillIds.flatMap((id) => skillEvidence(chunks, id, "learning"));
+  if (learning.length) {
+    return { requirementId: req.id, status: "partial", evidence: toEvidence(learning), notes: ["learning_context"], relatedSkills: [] };
+  }
+  const negated = req.skillIds.flatMap((id) => skillEvidence(chunks, id, "negated"));
+  if (negated.length) {
+    return { requirementId: req.id, status: "not_found", evidence: toEvidence(negated), notes: ["negated_context"], relatedSkills: [] };
   }
   return { requirementId: req.id, status: "not_found", evidence: [], notes: ["not_in_document"], relatedSkills: [] };
 }

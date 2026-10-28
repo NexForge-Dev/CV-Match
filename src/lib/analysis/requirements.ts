@@ -39,6 +39,8 @@ const SOFT_MARKERS = /\b(communication|comunicacao|comunicacion|leadership|lider
 const YEARS = /(\d{1,2})\s*\+?\s*(?:\+\s*)?(?:years?|anos?|años?|yrs)/i;
 const OR_MARKER = /\b(or|ou|o)\b|\//;
 const CEFR = /\b([abc][12])\b/i;
+// Lines describing what the company offers, never what it requires (used when the ad has no headings).
+const BENEFIT_MARKERS = /\b(salary|salario|remuneracao|remuneracion|health insurance|plano de saude|seguro medico|seguro de saude|vale[- ](refeicao|alimentacao|transporte)|ticket restaurant|meal vouchers?|gympass|wellhub|bonus anual|annual bonus|paid time off|vacation|ferias|vacaciones|stock options|equity|flexible hours|horario flexivel|horario flexible|home office allowance|we offer|oferecemos|ofrecemos|benefits?|beneficios)\b/;
 const LEVEL_WORDS = /\b(native|nativo|fluent|fluente|fluido|advanced|avancado|avanzado|intermediate|intermediario|intermedio|basic|basico|professional working|business)\b/;
 
 let counter = 0;
@@ -72,6 +74,7 @@ export function extractRequirements(jobText: string): Requirement[] {
   const lines = jobText.replace(/\r/g, "").split("\n");
   const out: Requirement[] = [];
   const bySkill = new Map<string, Requirement>();
+  const seenText = new Set<string>();
   let zone: Zone = "unknown";
   const hasZones = lines.some((l) => detectZone(l) !== null);
 
@@ -107,6 +110,7 @@ export function extractRequirements(jobText: string): Requirement[] {
     if (zone === "ignore") continue;
     for (const sentence of splitSentences(rawLine)) {
       const n = normalize(sentence);
+      if (BENEFIT_MARKERS.test(n)) continue; // a benefit is not a requirement
       const skills = findSkills(sentence);
       const years = sentence.match(YEARS);
       const minYears = years ? Number(years[1]) : null;
@@ -148,6 +152,10 @@ export function extractRequirements(jobText: string): Requirement[] {
       }
       if (!inRequirementZone) continue;
       if (sentence.length < 12 || sentence.length > 400) continue;
+      // The same requirement repeated in the ad must not count twice in the score.
+      const key = n.replace(/[^a-z0-9+#]+/g, " ").trim();
+      if (seenText.has(key)) continue;
+      seenText.add(key);
       const category = categorize(sentence, []);
       out.push({
         id: rid(),

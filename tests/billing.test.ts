@@ -28,6 +28,10 @@ function memoryStore() {
     async userIdForCustomer(id) {
       return customers.get(id) ?? null;
     },
+    async getSubscription(userId) {
+      const s = subs.get(userId);
+      return s ? { stripeSubscriptionId: s.stripeSubscriptionId, status: s.status } : null;
+    },
   };
   return { store, processed, ledger, subs };
 }
@@ -68,24 +72,64 @@ describe("stripe webhook handler", () => {
     expect(ledger.size).toBe(0);
   });
 
-  it("syncs subscriptions from checkout and lifecycle events", async () => {
+  it("syncs subscriptions from checkout and lifecycle events using Stripe's current state", async () => {
     const { store, subs } = memoryStore();
-    const fetchSub = async () => subscription("active");
+    let live = subscription("active");
+    const fetchSub = async () => live;
     await handleStripeEvent(event("evt_6", "checkout.session.completed", { id: "cs_5", mode: "subscription", subscription: "sub_1", metadata: { user_id: "user-1", plan_id: "pro_monthly" } }), store, fetchSub);
     expect(subs.get("user-1")).toMatchObject({ status: "active", planId: "pro_monthly", currentPeriodEnd: new Date(1_702_592_000_000).toISOString() });
 
-    await handleStripeEvent(event("evt_7", "customer.subscription.updated", subscription("active", { cancel_at_period_end: true })), store, noFetch);
-    expect(subs.get("user-1")?.cancelAtPeriodEnd).toBe(true);
+    // Update: cancel at period end (access continues until the period ends).
+    live = subscription("active", { cancel_at_period_end: true });
+    await handleStripeEvent(event("evt_7", "customer.subscription.updated", live), store, fetchSub);
+    expect(subs.get("user-1")).toMatchObject({ status: "active", cancelAtPeriodEnd: true });
 
-    await handleStripeEvent(event("evt_8", "customer.subscription.deleted", subscription("canceled", { metadata: {} })), store, noFetch);
-    // Without metadata the user is resolved via the customer id; plan is required, so the event is ignored safely.
-    expect(subs.get("user-1")?.status).toBe("active");
+    // Payment declined on renewal: Stripe moves the subscription to past_due -> no subscription quota.
+    live = subscription("past_due");
+    await handleStripeEvent(event("evt_8", "customer.subscription.updated", live), store, fetchSub);
+    expect(subs.get("user-1")?.status).toBe("past_due");
+
+    // Period over: deleted -> canceled.
+    live = subscription("canceled");
+    await handleStripeEvent(event("evt_9", "customer.subscription.deleted", live), store, fetchSub);
+    expect(subs.get("user-1")?.status).toBe("canceled");
+  });
+
+  it("a stale out-of-order event cannot resurrect a canceled subscription", async () => {
+    const { store, subs } = memoryStore();
+    const fetchSub = async () => subscription("canceled"); // Stripe's current truth
+    // An old "active" update arrives after the cancellation.
+    await handleStripeEvent(event("evt_old", "customer.subscription.updated", subscription("active")), store, fetchSub);
+    expect(subs.get("user-1")?.status).toBe("canceled");
+  });
+
+  it("an event about an old subscription does not replace the user's newer live one", async () => {
+    const { store, subs } = memoryStore();
+    await store.upsertSubscription({ userId: "user-1", planId: "pro_monthly", status: "active", stripeSubscriptionId: "sub_new", currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false });
+    const outcome = await handleStripeEvent(event("evt_10", "customer.subscription.deleted", subscription("canceled")), store, async () => subscription("canceled"));
+    expect(outcome).toBe("ignored_superseded");
+    expect(subs.get("user-1")).toMatchObject({ stripeSubscriptionId: "sub_new", status: "active" });
+  });
+
+  it("subscription events without a plan are ignored safely", async () => {
+    const { store, subs } = memoryStore();
+    const outcome = await handleStripeEvent(event("evt_11", "customer.subscription.updated", subscription("active")), store, async () => subscription("active", { metadata: {} }));
+    expect(outcome).toBe("ignored_missing_metadata");
+    expect(subs.size).toBe(0);
+  });
+
+  it("a failed asynchronous payment never grants credits", async () => {
+    const { store, ledger } = memoryStore();
+    const session = { id: "cs_9", mode: "payment", payment_status: "unpaid", metadata: { user_id: "user-1", plan_id: "pack_5" } };
+    expect(await handleStripeEvent(event("evt_12", "checkout.session.completed", session), store, noFetch)).toBe("awaiting_payment");
+    expect(await handleStripeEvent(event("evt_13", "checkout.session.async_payment_failed", session), store, noFetch)).toBe("ignored");
+    expect(ledger.size).toBe(0);
   });
 
   it("ignores unrelated events but records them as processed", async () => {
     const { store, processed } = memoryStore();
-    expect(await handleStripeEvent(event("evt_9", "invoice.created", {}), store, noFetch)).toBe("ignored");
-    expect(processed.has("evt_9")).toBe(true);
+    expect(await handleStripeEvent(event("evt_99", "invoice.created", {}), store, noFetch)).toBe("ignored");
+    expect(processed.has("evt_99")).toBe(true);
   });
 });
 

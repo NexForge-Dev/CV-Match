@@ -75,6 +75,20 @@ Endpoint: `POST /api/stripe/webhook` (signature verified with `STRIPE_WEBHOOK_SE
 Processing is idempotent: event ids are recorded in `stripe_events`, credits are keyed by checkout session id
 and subscriptions are upserted per user. Returning 500 lets Stripe retry safely.
 
+**Event order.** Stripe does not guarantee delivery order, so subscription events are never applied from their
+payload: the handler re-reads the subscription from the Stripe API and stores that current snapshot. A late
+`customer.subscription.updated` therefore cannot resurrect a canceled subscription, and an event about an old,
+ended subscription never replaces a newer live one for the same user.
+
+**Access rules.** Only `active`/`trialing` subscriptions with `current_period_end` in the future grant quota.
+A declined renewal moves the subscription to `past_due` (no quota; remaining pack/free credits still work).
+Cancel-at-period-end keeps access until the period ends. The subscription quota counts only analyses paid by the
+subscription (`usage_events.credit_source = 'subscription'`), never those paid with pack or free credits.
+
+**Not automated (decide before launch).** Refunds and disputes (`charge.refunded`, `charge.dispute.created`) do not
+remove pack credits automatically; adjust them manually with an `admin_adjustment` row in `credit_ledger` if your
+refund policy requires it.
+
 ## Going live
 
 1. Complete Stripe account activation (business details, bank account).

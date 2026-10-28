@@ -17,19 +17,34 @@ export interface BillingStore {
     cancelAtPeriodEnd: boolean;
   }): Promise<void>;
   userIdForCustomer(customerId: string): Promise<string | null>;
+  getSubscription(userId: string): Promise<{ stripeSubscriptionId: string | null; status: string } | null>;
 }
+
+const LIVE = ["active", "trialing", "past_due"];
 
 export type FetchSubscription = (id: string) => Promise<Stripe.Subscription>;
 
 const iso = (unix: number | null | undefined) => (unix ? new Date(unix * 1000).toISOString() : null);
 
-async function syncSubscription(sub: Stripe.Subscription, store: BillingStore, fallbackUserId?: string) {
+/**
+ * Stripe does not guarantee event order, so the event payload is never trusted
+ * as the current state: the subscription is re-read from Stripe and that
+ * snapshot is stored. A stale event can therefore never resurrect a canceled
+ * subscription or undo a renewal.
+ */
+async function syncSubscription(eventSub: Stripe.Subscription, store: BillingStore, fetchSubscription: FetchSubscription, fallbackUserId?: string) {
+  const sub = await fetchSubscription(eventSub.id);
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const userId = sub.metadata?.user_id || fallbackUserId || (await store.userIdForCustomer(customerId));
   const planId = sub.metadata?.plan_id;
   if (!userId || !planId) return "ignored_missing_metadata";
   const plan = await store.getPlan(planId);
   if (!plan || plan.kind !== "subscription") return "ignored_unknown_plan";
+  // One subscription row per user: an update about an old, ended subscription must not replace a newer live one.
+  const current = await store.getSubscription(userId);
+  if (current?.stripeSubscriptionId && current.stripeSubscriptionId !== sub.id && LIVE.includes(current.status) && !LIVE.includes(sub.status)) {
+    return "ignored_superseded";
+  }
   // Since API 2025-03-31 the billing period lives on subscription items.
   const item = sub.items?.data?.[0];
   await store.upsertSubscription({
@@ -70,14 +85,14 @@ export async function handleStripeEvent(event: Stripe.Event, store: BillingStore
       if (session.mode === "payment") outcome = await fulfillPack(session, store);
       else if (session.mode === "subscription" && session.subscription) {
         const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
-        outcome = await syncSubscription(await fetchSubscription(subId), store, session.metadata?.user_id ?? session.client_reference_id ?? undefined);
+        outcome = await syncSubscription({ id: subId } as Stripe.Subscription, store, fetchSubscription, session.metadata?.user_id ?? session.client_reference_id ?? undefined);
       }
       break;
     }
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted":
-      outcome = await syncSubscription(event.data.object as Stripe.Subscription, store);
+      outcome = await syncSubscription(event.data.object as Stripe.Subscription, store, fetchSubscription);
       break;
     default:
       outcome = "ignored";

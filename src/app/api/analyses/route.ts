@@ -4,6 +4,7 @@ import { HttpError, parseJson, uuidLike, withUser } from "@/lib/api";
 import { log } from "@/lib/log";
 import { cvLanguageSchema } from "@/lib/cv/schema";
 import { requirementSchema } from "@/lib/analysis/requirements";
+import { computeScore, matchRequirements } from "@/lib/analysis/match";
 import { analyze, getProvider } from "@/lib/ai/pipeline";
 import { planFeaturesSchema } from "@/lib/billing/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,6 +37,13 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   if (!job) throw new HttpError("not_found");
   const requirements = z.array(requirementSchema).parse(job.requirements ?? []);
 
+  // Matching is deterministic and cheap: refuse (without charging) a job whose
+  // requirements cannot produce a meaningful index instead of showing a misleading score.
+  if (!requirements.length) throw new HttpError("invalid_input", "no_requirements");
+  if (computeScore(requirements, matchRequirements(version.cv, requirements)).score === null) {
+    throw new HttpError("invalid_input", "no_scorable_requirements");
+  }
+
   const admin = createAdminClient();
   await assertRateLimit(admin, user.id);
 
@@ -66,7 +74,8 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
         score_breakdown: output.score,
         requirements,
         results: output.results,
-        provider: output.usage[0]?.provider ?? getProvider().name,
+        // "heuristic_fallback" = the configured AI failed and the rule-based engine wrote the suggestions.
+        provider: output.fallback ? "heuristic_fallback" : (output.usage[0]?.provider ?? getProvider().name),
         tier: credit.tier,
         features,
         credit_source: credit.source,

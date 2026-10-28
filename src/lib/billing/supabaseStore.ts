@@ -38,6 +38,10 @@ export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
       );
       if (error) throw error;
     },
+    async getSubscription(userId) {
+      const { data } = await admin.from("subscriptions").select("stripe_subscription_id, status").eq("user_id", userId).maybeSingle();
+      return data ? { stripeSubscriptionId: (data.stripe_subscription_id as string | null) ?? null, status: data.status as string } : null;
+    },
     async userIdForCustomer(customerId) {
       const { data } = await admin.from("billing_customers").select("user_id").eq("stripe_customer_id", customerId).maybeSingle();
       return (data?.user_id as string | undefined) ?? null;

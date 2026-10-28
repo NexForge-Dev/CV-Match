@@ -44,7 +44,9 @@ export const POST = withUser<Ctx>(async (req, { params }, { user, supabase }) =>
   };
 
   const result = kind === "cover_letter" ? await coverLetter(input) : await interviewPrep(input);
-  const content = kind === "cover_letter" ? { text: result.value } : { items: result.value };
+  // engine/fallback let the UI say honestly which engine produced the text.
+  const meta = { engine: result.usage.provider, fallback: result.fallback };
+  const content = kind === "cover_letter" ? { text: result.value, ...meta } : { items: result.value, ...meta };
   await recordUsage(admin, user.id, kind, result.usage, id);
 
   const { error } = await admin.from("analysis_extras").upsert({ analysis_id: id, user_id: user.id, kind, content, created_at: new Date().toISOString() }, { onConflict: "analysis_id,kind" });

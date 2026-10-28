@@ -10,17 +10,23 @@ export const DELETE = withUser<Ctx>(async (req, { params }, { user, supabase }) 
   assertUuid(id);
   const scope = new URL(req.url).searchParams.get("scope") === "original" ? "original" : "all";
 
+  // Ownership check through RLS first; storage_path is server-managed (not user-writable).
   const { data: doc } = await supabase.from("documents").select("id, storage_path").eq("id", id).maybeSingle();
   if (!doc) throw new HttpError("not_found");
+  const admin = createAdminClient();
 
   if (doc.storage_path) {
     if (!doc.storage_path.startsWith(`${user.id}/`)) throw new HttpError("forbidden");
-    const { error } = await createAdminClient().storage.from("cv-originals").remove([doc.storage_path]);
+    const { error } = await admin.storage.from("cv-originals").remove([doc.storage_path]);
     if (error) throw error;
   }
 
   if (scope === "original") {
-    const { error } = await supabase.from("documents").update({ storage_path: null, original_deleted_at: new Date().toISOString() }).eq("id", id);
+    const { error } = await admin
+      .from("documents")
+      .update({ storage_path: null, original_deleted_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", user.id);
     if (error) throw error;
   } else {
     const { error } = await supabase.from("documents").delete().eq("id", id);

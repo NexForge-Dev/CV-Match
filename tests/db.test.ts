@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -42,8 +42,11 @@ async function as<T = Record<string, unknown>>(user: string | null, sql: string,
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  const migration = readFileSync(path.join(__dirname, "../supabase/migrations/20261028000001_schema.sql"), "utf8");
-  await db.exec(migration);
+  // Every migration in order, except Storage (the storage schema is not stubbed here).
+  const dir = path.join(__dirname, "../supabase/migrations");
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && !f.includes("storage")).sort()) {
+    await db.exec(readFileSync(path.join(dir, file), "utf8"));
+  }
   await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values ('${A}', 'a@test.dev', '{"full_name":"Ana"}'), ('${B}', 'b@test.dev', '{}');`);
 }, 60000);
 
@@ -93,6 +96,48 @@ describe("row level security isolates accounts", () => {
     expect(row.data).toEqual({});
   });
 
+  it("server-managed columns and rows cannot be written by users", async () => {
+    const [{ id: docA }] = await as<{ id: string }>(
+      "service",
+      `insert into public.documents (user_id, file_name, mime_type, kind, size_bytes, storage_path, extraction_status) values ($1, 'cv.pdf', 'application/pdf', 'pdf', 10, $2, 'ok') returning id`,
+      [A, `${A}/x.pdf`],
+    );
+    // storage_path drives server-side file deletion: users must not be able to point it at someone else's file.
+    await expect(as(A, `update public.documents set storage_path = $1 where id = $2`, [`${B}/victim.pdf`, docA])).rejects.toThrow(/permission denied/);
+    await as(A, `update public.documents set extracted_text = null where id = $1`, [docA]); // allowed: own text
+    await expect(as(B, `insert into public.documents (user_id, file_name, mime_type, kind, size_bytes, extraction_status) values ($1, 'x', 'x', 'pdf', 1, 'ok')`, [B])).rejects.toThrow(/row-level security/);
+
+    const [{ id: jobA }] = await as<{ id: string }>(A, "select id from public.job_descriptions limit 1");
+    await expect(
+      as(A, `insert into public.analyses (user_id, resume_id, resume_version_id, job_id, language, provider, tier, credit_source) values ($1, $2, $3, $4, 'en', 'x', 'full', 'x')`, [A, resumeA, versionA, jobA]),
+    ).rejects.toThrow(/row-level security/);
+    const [{ id: analysisA }] = await as<{ id: string }>(
+      "service",
+      `insert into public.analyses (user_id, resume_id, resume_version_id, job_id, language, score, provider, tier, credit_source) values ($1, $2, $3, $4, 'en', 40, 'heuristic', 'free', 'free_credit') returning id`,
+      [A, resumeA, versionA, jobA],
+    );
+    await as(A, `update public.analyses set score = 100, tier = 'full' where id = $1`, [analysisA]); // no update policy: no-op
+    const [a] = await as<{ score: number; tier: string }>(A, "select score, tier from public.analyses where id = $1", [analysisA]);
+    expect(a).toEqual({ score: 40, tier: "free" });
+
+    const [{ id: sugA }] = await as<{ id: string }>(
+      "service",
+      `insert into public.suggestions (analysis_id, user_id, kind, section, suggested_text) values ($1, $2, 'summary', 'summary', 'grounded text') returning id`,
+      [analysisA, A],
+    );
+    await expect(as(A, `update public.suggestions set suggested_text = 'invented' where id = $1`, [sugA])).rejects.toThrow(/permission denied/);
+    await as(A, `update public.suggestions set status = 'accepted' where id = $1`, [sugA]);
+    await as(B, `update public.suggestions set status = 'rejected' where id = $1`, [sugA]); // other user: no rows
+    const [s] = await as<{ status: string }>(A, "select status from public.suggestions where id = $1", [sugA]);
+    expect(s.status).toBe("accepted");
+
+    // B cannot attach one of its versions to A's analysis.
+    const [{ id: resumeB }] = await as<{ id: string }>(B, `insert into public.resumes (user_id, title) values ($1, 'B cv') returning id`, [B]);
+    await expect(
+      as(B, `insert into public.resume_versions (resume_id, user_id, version_number, origin, data, analysis_id) values ($1, $2, 1, 'suggestions', '{}', $3)`, [resumeB, B, analysisA]),
+    ).rejects.toThrow(/row-level security/);
+  });
+
   it("anonymous users see only active plans", async () => {
     const plans = await as<{ id: string }>(null, "select id from public.plans order by sort");
     expect(plans.map((p) => p.id)).toEqual(["free", "pack_5", "pro_monthly"]);
@@ -139,6 +184,30 @@ describe("billing integrity", () => {
     }
     // 2 from the subscription quota, then the remaining free credit.
     expect(sources).toEqual(["subscription", "subscription", "free_credit"]);
+  });
+
+  it("subscription quota ignores analyses paid with credits in the same period", async () => {
+    // A already spent a paid credit above (in this period). That must not reduce the subscription quota.
+    await as("service", `insert into public.subscriptions (user_id, plan_id, status, current_period_start, current_period_end) values ($1, 'pro_monthly', 'active', now() - interval '1 day', now() + interval '29 days')`, [A]);
+    const sources: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const [r] = await as<{ source: string }>("service", "select * from public.consume_analysis_credit($1)", [A]);
+      sources.push(r.source);
+    }
+    expect(sources).toEqual(["subscription", "subscription", "paid_credit"]);
+    const [summary] = await as<{ period_used: number; period_included: number }>(A, "select * from public.credit_summary()");
+    expect(summary).toMatchObject({ period_used: 2, period_included: 2 });
+  });
+
+  it("concurrent consumption never overspends", async () => {
+    const C = "33333333-3333-3333-3333-333333333333";
+    await db.exec(`insert into auth.users (id, email) values ('${C}', 'c@test.dev')`); // 1 free credit
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => as<{ allowed: boolean }>("service", "select * from public.consume_analysis_credit($1)", [C])),
+    );
+    expect(results.filter((r) => r[0].allowed)).toHaveLength(1);
+    const [{ balance }] = await as<{ balance: number }>("service", "select coalesce(sum(delta),0)::int as balance from public.credit_ledger where user_id = $1", [C]);
+    expect(balance).toBe(0);
   });
 
   it("deleting the auth user removes all their data", async () => {

@@ -33,10 +33,11 @@ and suggests targeted improvements — **without inventing experience, metrics, 
 ## How "no invented facts" is enforced
 
 1. **Deterministic matching.** Requirement evidence and the score come from a rule-based matcher over the CV text, not from a model, so results are explainable and reproducible.
-2. **Fact guard.** Every suggestion (rule-based or AI) is checked against the CV: any new number/percentage or any technology not present in the CV is **discarded** (the user sees how many were dropped). Years of experience are only stated when computed from the CV's own dates.
+2. **Fact guard.** Every suggestion (rule-based or AI), cover letter and interview-prep item is checked against the CV: any new number/percentage (any script or format), technology, spoken language, certification or degree not evidenced in the CV is **discarded** (the user sees how many were dropped). A skill the CV mentions only negatively ("no experience with Kubernetes") or as something being learned is not evidence. Model-written text is also rejected if it introduces unknown proper names. Years of experience are only stated when computed from the CV's own dates (merged employment periods).
 3. **Grounding.** When an LLM parses a CV or a job ad, every extracted item must be found in the source text or it is dropped.
-4. **Confirmation gate.** Missing requirements are never added automatically. The user must explicitly confirm (checkbox) before a missing skill can be added, and placeholders like `[number]` block applying a suggestion.
+4. **Confirmation gate.** Missing requirements are never added automatically and never come with pre-written text: the user confirms (checkbox) and writes the description themselves. The resulting version is labelled "confirmed by you", and placeholders like `[number]` block applying a suggestion.
 5. **Prompt-injection defences.** Documents are wrapped as untrusted data, delimiter look-alikes and invisible characters are stripped, instruction-like text is detected and reported, model output is schema-validated, and entitlements are decided only on the server.
+6. **Honest fallback.** If the AI provider fails, the rule-based engine takes over and the UI says so ("Rule-based engine (AI unavailable)"); the score never depends on which engine ran.
 
 ## Tech stack
 
@@ -89,6 +90,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 | `npm test` | Unit + integration tests (Vitest, PGlite) |
 | `npm run check` | lint + typecheck + tests + build |
 | `npm run smoke` | End-to-end test against a running app and Supabase (`BASE_URL=http://localhost:3000`) |
+| `npm run screenshots` | Phone and desktop screenshots of every page with real data (headless Chrome/Edge), saved to `./screenshots` |
 
 ### What the tests cover
 
@@ -99,7 +101,12 @@ ANTHROPIC_API_KEY=sk-ant-...
 - PDF and DOCX export round-trips (exported files are re-extracted and checked)
 - Database: RLS isolation between two users, immutable versions, users cannot grant credits/subscriptions, credit consumption order and refunds, subscription quotas, account deletion cascade
 - Stripe webhook idempotency, pack credits, subscription sync
-- Log redaction and prompt-injection detection
+- Log redaction and prompt-injection detection; an injection the detector misses still cannot change the score or add facts
+- Mention context: "no experience with X" / "learning X" is never counted as evidence or as permission to add X
+- Fact guard against invented certifications, degrees, spoken languages, Unicode/thousand-separated numbers and (for model text) unknown company names
+- DOCX decompression bombs and non-Word ZIPs rejected before parsing; benefits and duplicate requirements never scored; unscorable jobs refused without charging
+- Stripe: out-of-order events, declined renewals, cancellation, superseded subscriptions; subscription quota not consumed by pack/free analyses
+- RLS: users cannot write `storage_path`, analyses, suggestion text, credits or subscriptions, nor link a version to another user's analysis
 - `npm run smoke`: the full HTTP flow with two real users (upload → review → job → analysis → limits → suggestions → apply → export → isolation → signed Stripe webhook → paid extras → deletions)
 
 ## Configuration
@@ -169,12 +176,14 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Vercel + Supabase Cloud + Stripe
 1. Create a Supabase Cloud project, run `npx supabase db push`, set Auth URLs and a custom SMTP sender.
 2. Create a Stripe account; complete the test-mode flow from `docs/PAYMENTS.md`; then switch to live keys and a live webhook.
 3. Set the environment variables in your host (see `.env.example`).
-4. Replace the placeholder contact email in the legal pages and have them reviewed.
+4. Fill in the legal pages: replace `privacy@cvmatch.example` and every `[OPERATOR: ...]` placeholder (`src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
 5. Optionally enable `AI_PROVIDER=anthropic` for higher-quality parsing and wording.
 
 ## Known limitations
 
-- With the `heuristic` provider, suggestions keep the CV's original wording language; translating CV content into another language requires the `anthropic` provider (section headings are always localized).
+- With the `heuristic` provider, suggestions keep the CV's original wording language; translating CV content into another language requires the `anthropic` provider (section headings are always localized, and the UI tells the user).
+- The fact guard cannot verify claims the user wrote into their own CV, and numbers written as words ("doubled") are not detected as metrics.
+- Refunds/disputes do not remove pack credits automatically (see `docs/PAYMENTS.md`).
 - OCR requires an external service behind the HTTP adapter.
 - The rule-based requirement extractor is tuned for tech roles; other sectors work best with the `anthropic` provider or after extending `src/lib/analysis/taxonomy.ts`.
 

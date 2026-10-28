@@ -4,7 +4,7 @@ import { checkFacts } from "@/lib/ai/factGuard";
 import type { MatchResult } from "./match";
 import { yearsOfExperience } from "./match";
 import type { Requirement } from "./requirements";
-import { findSkills, getSkill, mentionsSkill, skillTerms } from "./taxonomy";
+import { findEvidencedSkills, getSkill, mentionsSkill, skillTerms } from "./taxonomy";
 import { containsTerm, normalize } from "./text";
 
 export const SUGGESTION_KINDS = [
@@ -205,7 +205,8 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
 
   // 2. Skills: add skills evidenced elsewhere in the CV, then reorder by job relevance.
   const listed = new Set(cv.skills.map(normalize));
-  const evidencedNotListed = findSkills(cvText)
+  // Only skills with positive evidence ("no experience with X" or "learning X" never qualify).
+  const evidencedNotListed = findEvidencedSkills(cvText)
     .filter((s) => jobSkillIds.includes(s.id) && s.category !== "spoken" && s.category !== "soft")
     .filter((s) => !cv.skills.some((k) => skillTerms(s).includes(normalize(k))) && !listed.has(normalize(s.label)));
   for (const s of evidencedNotListed) {
@@ -325,22 +326,34 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
 
 /**
  * Final safety net for every suggestion (heuristic or LLM): anything that adds
- * numbers or technologies not present in the CV is discarded. Returns kept + dropped count.
+ * numbers, technologies, languages, certifications or degrees not evidenced in
+ * the CV is discarded. Returns kept + dropped count.
+ *
+ * - "confirm" items never carry pre-written text: only the user may write the
+ *   description of an experience the CV does not show.
+ * - "gap_answer" advice may name the job's requirements, but no other new facts.
+ * - With `strictEntities` (model-written text) unknown proper names are also fatal.
  */
 export function guardSuggestions(
   drafts: SuggestionDraft[],
   cv: CvData,
-  opts: { allowedNumbers?: string[]; jobText?: string } = {},
+  opts: { allowedNumbers?: string[]; jobText?: string; strictEntities?: boolean } = {},
 ): { kept: SuggestionDraft[]; dropped: number } {
   const source = cvToPlainText(cv);
   const kept: SuggestionDraft[] = [];
   let dropped = 0;
   for (const d of drafts) {
-    if (d.kind === "confirm" || d.kind === "gap_answer") {
-      kept.push(d); // advice/confirmation text is never auto-inserted into the CV
+    if (d.kind === "confirm") {
+      kept.push({ ...d, suggested: "", requiresConfirmation: true });
       continue;
     }
-    const check = checkFacts(d.suggested, source, { allowedNumbers: opts.allowedNumbers, allowedText: opts.jobText });
+    if (d.kind === "gap_answer") {
+      const advice = checkFacts(d.suggested, `${source}\n${opts.jobText ?? ""}`, { allowedNumbers: opts.allowedNumbers });
+      if (advice.ok) kept.push(d);
+      else dropped++;
+      continue;
+    }
+    const check = checkFacts(d.suggested, source, { allowedNumbers: opts.allowedNumbers, allowedText: opts.jobText, strictEntities: opts.strictEntities });
     if (!check.ok) {
       dropped++;
       continue;

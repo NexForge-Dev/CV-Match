@@ -3,6 +3,7 @@ import { z } from "zod";
 import { HttpError, assertUuid, withUser } from "@/lib/api";
 import { ApplyError, SUGGESTION_KINDS, applySuggestions, type AppliedSuggestion } from "@/lib/analysis/suggestions";
 import { insertVersion, loadVersion } from "@/lib/server/resumes";
+import { cvDataSchema } from "@/lib/cv/schema";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -50,6 +51,23 @@ export const POST = withUser<Ctx>(async (_req, { params }, { user, supabase }) =
     if (err instanceof ApplyError) throw new HttpError("invalid_input", err.code);
     throw err;
   }
-  const version = await insertVersion(supabase, { resumeId: base.resumeId, userId: user.id, data: next, origin: "suggestions", analysisId: id });
+  // Applying the same decisions twice (double click, retry) must not create duplicate versions.
+  const { data: previous } = await supabase
+    .from("resume_versions")
+    .select("id, version_number, data")
+    .eq("resume_id", base.resumeId)
+    .eq("analysis_id", id)
+    .order("version_number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  // jsonb does not keep key order: compare through the schema, which yields a canonical shape.
+  if (previous && JSON.stringify(cvDataSchema.parse(previous.data)) === JSON.stringify(next)) {
+    return NextResponse.json({ versionId: previous.id, versionNumber: previous.version_number, resumeId: base.resumeId, unchanged: true });
+  }
+
+  // The version records which items the user confirmed themselves (not proven by the original CV).
+  const confirmed = accepted.filter((s) => s.kind === "confirm" && s.confirmedByUser).map((s) => s.targetRef?.skill).filter(Boolean);
+  const label = confirmed.length ? `confirmed_by_user: ${confirmed.join(", ")}`.slice(0, 200) : "";
+  const version = await insertVersion(supabase, { resumeId: base.resumeId, userId: user.id, data: next, origin: "suggestions", analysisId: id, label });
   return NextResponse.json({ versionId: version.id, versionNumber: version.version_number, resumeId: base.resumeId });
 });

@@ -4,11 +4,11 @@ import { cvToPlainText, type CvData, type CvLanguage } from "@/lib/cv/schema";
 import { computeScore, matchRequirements, type MatchResult, type ScoreBreakdown } from "@/lib/analysis/match";
 import type { Requirement } from "@/lib/analysis/requirements";
 import { derivedNumbers, guardSuggestions, type SuggestionDraft } from "@/lib/analysis/suggestions";
-import { heuristicCoverLetter, type ExtrasInput, type InterviewItem } from "@/lib/analysis/extras";
+import { heuristicCoverLetter, heuristicInterviewPrep, type ExtrasInput, type InterviewItem } from "@/lib/analysis/extras";
 import { AnthropicProvider } from "./anthropic";
-import { checkFacts } from "./factGuard";
+import { checkFacts, isGrounded } from "./factGuard";
 import { heuristicProvider } from "./heuristic";
-import type { AiProvider, AiResult, AiUsage } from "./provider";
+import { noUsage, type AiProvider, type AiResult, type AiUsage } from "./provider";
 
 let providerOverride: AiProvider | null = null;
 
@@ -58,6 +58,8 @@ export interface AnalysisOutput {
   suggestions: SuggestionDraft[];
   droppedSuggestions: number;
   usage: AiUsage[];
+  /** True when the configured AI failed and the rule-based engine produced the suggestions. */
+  fallback: boolean;
 }
 
 /**
@@ -76,25 +78,47 @@ export async function analyze(params: {
   const written = await withFallback<SuggestionDraft[]>("suggestions", (p) =>
     p.writeSuggestions({ cv: params.cv, requirements: params.requirements, results, language: params.language, jobText: params.jobText }),
   );
-  const { kept, dropped } = guardSuggestions(written.value, params.cv, { allowedNumbers: derivedNumbers(params.cv), jobText: params.jobText });
+  // Model-written text must not introduce unknown proper names either; the rule-based engine only reuses CV text.
+  const strictEntities = written.usage.provider !== heuristicProvider.name;
+  const { kept, dropped } = guardSuggestions(written.value, params.cv, { allowedNumbers: derivedNumbers(params.cv), jobText: params.jobText, strictEntities });
   const limited = params.maxSuggestions != null ? kept.slice(0, params.maxSuggestions) : kept;
   if (dropped) log.info("ai.suggestions_dropped_by_fact_guard", { dropped });
-  return { results, score, suggestions: limited, droppedSuggestions: dropped, usage: [written.usage] };
+  return { results, score, suggestions: limited, droppedSuggestions: dropped, usage: [written.usage], fallback: written.fallback };
 }
 
-export async function coverLetter(input: ExtrasInput): Promise<AiResult<string>> {
+export type ExtraResult<T> = AiResult<T> & { fallback: boolean };
+
+export async function coverLetter(input: ExtrasInput): Promise<ExtraResult<string>> {
   const r = await withFallback<string>("cover_letter", (p) => p.coverLetter(input));
   const check = checkFacts(r.value, cvToPlainText(input.cv), {
     allowedNumbers: derivedNumbers(input.cv),
     allowedText: `${input.job.title} ${input.job.company}`,
   });
   if (!check.ok) {
-    log.warn("ai.cover_letter_rejected_by_fact_guard", { numbers: check.newNumbers.length, skills: check.newSkills.length });
-    return { value: heuristicCoverLetter(input), usage: r.usage };
+    log.warn("ai.cover_letter_rejected_by_fact_guard", { numbers: check.newNumbers.length, skills: check.newSkills.length, credentials: check.newCredentials.length });
+    // Honest fallback: the rule-based letter, labelled as such (never presented as the AI result).
+    return { value: heuristicCoverLetter(input), usage: noUsage(heuristicProvider.name), fallback: r.usage.provider !== heuristicProvider.name };
   }
   return r;
 }
 
-export async function interviewPrep(input: ExtrasInput): Promise<AiResult<InterviewItem[]>> {
-  return withFallback<InterviewItem[]>("interview_prep", (p) => p.interviewPrep(input));
+/**
+ * Interview prep may talk about the job's requirements, but evidence quotes
+ * must come from the CV and no other new facts (numbers, technologies,
+ * credentials) may appear. Failing items are dropped; if nothing survives the
+ * rule-based questions are used instead.
+ */
+export async function interviewPrep(input: ExtrasInput): Promise<ExtraResult<InterviewItem[]>> {
+  const r = await withFallback<InterviewItem[]>("interview_prep", (p) => p.interviewPrep(input));
+  const cvText = cvToPlainText(input.cv);
+  const jobFacts = input.requirements.map((q) => `${q.label}. ${q.sourceText}`).join("\n");
+  const allowedNumbers = derivedNumbers(input.cv);
+  const items = r.value
+    .map((i) => ({ ...i, evidence: i.evidence.filter((e) => isGrounded(e, cvText)) }))
+    .filter((i) => checkFacts(`${i.question}\n${i.tip}`, `${cvText}\n${jobFacts}`, { allowedNumbers }).ok);
+  if (!items.length && r.value.length) {
+    log.warn("ai.interview_prep_rejected_by_fact_guard", { items: r.value.length });
+    return { value: heuristicInterviewPrep(input), usage: noUsage(heuristicProvider.name), fallback: r.usage.provider !== heuristicProvider.name };
+  }
+  return { ...r, value: items };
 }

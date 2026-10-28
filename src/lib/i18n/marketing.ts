@@ -167,6 +167,7 @@ const en = {
         paragraphs: [
           "Original uploaded files are not stored by default: the text is extracted in memory and the file is discarded. If file storage is enabled by the operator, originals are kept in private storage and deleted automatically after a limited period or when you request it.",
           "Extracted text, CVs, versions, jobs and analyses are kept until you delete them or delete your account.",
+          "Deletion removes your data from the live service immediately. Copies may remain in encrypted infrastructure backups until those backups expire under the provider retention schedule [OPERATOR: state the period]; they are not used to restore your data.",
           "Payment records may be retained for the period required by law.",
         ],
       },
@@ -410,6 +411,7 @@ const pt: MarketingDict = {
         paragraphs: [
           "Por padrão, os arquivos originais não são armazenados: o texto é extraído em memória e o arquivo é descartado. Se o operador ativar o armazenamento, os originais ficam em armazenamento privado e são excluídos automaticamente após um período limitado ou quando você pedir.",
           "Texto extraído, currículos, versões, vagas e análises ficam guardados até você excluí-los ou excluir a conta.",
+          "A exclusão remove seus dados do serviço imediatamente. Cópias podem permanecer em backups criptografados da infraestrutura até expirarem conforme o prazo de retenção do provedor [OPERADOR: informe o prazo]; elas não são usadas para restaurar seus dados.",
           "Registros de pagamento podem ser mantidos pelo prazo exigido por lei.",
         ],
       },
@@ -651,6 +653,7 @@ const es: MarketingDict = {
         paragraphs: [
           "Por defecto no se guardan los archivos originales: el texto se extrae en memoria y el archivo se descarta. Si el operador activa el almacenamiento, los originales se guardan en almacenamiento privado y se eliminan automáticamente tras un periodo limitado o cuando lo pidas.",
           "El texto extraído, los currículums, versiones, ofertas y análisis se conservan hasta que los elimines o elimines tu cuenta.",
+          "La eliminación borra tus datos del servicio de inmediato. Pueden quedar copias en copias de seguridad cifradas de la infraestructura hasta que caduquen según el plazo de retención del proveedor [OPERADOR: indica el plazo]; no se usan para restaurar tus datos.",
           "Los registros de pago pueden conservarse durante el plazo que exija la ley.",
         ],
       },

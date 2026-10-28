@@ -221,6 +221,16 @@ await step("paste job → requirements extracted (no scraping)", async () => {
   ctx.jobId = r.data.jobId;
 });
 
+await step("a job without checkable requirements is refused without spending a credit", async () => {
+  const vague = await call(ctx.a, "POST", "/api/jobs", { title: "Vague", company: "", language: "en", rawText: "Requirements\n- Passion for what you do and a great attitude every single day" });
+  assert(vague.status === 200, `job ${vague.status}`);
+  const r = await call(ctx.a, "POST", "/api/analyses", { resumeVersionId: ctx.v1, jobId: vague.data.jobId, language: "en" });
+  assert(r.status === 400 && ["no_scorable_requirements", "no_requirements"].includes(r.data.detail), `expected 400, got ${r.status} ${JSON.stringify(r.data)}`);
+  const { data } = await ctx.a.db.rpc("credit_summary");
+  assert(data[0].free_credits === 1, "credit was consumed");
+  await call(ctx.a, "DELETE", `/api/jobs/${vague.data.jobId}`);
+});
+
 await step("free analysis consumes the free credit and is limited", async () => {
   const r = await call(ctx.a, "POST", "/api/analyses", { resumeVersionId: ctx.v1, jobId: ctx.jobId, language: "en" });
   assert(r.status === 200, `status ${r.status} ${JSON.stringify(r.data)}`);
@@ -253,6 +263,9 @@ await step("client cannot grant itself credits or edit analysis data", async () 
   assert(upd.error || upd.data.length === 0, "analysis update allowed!");
   const sug = await ctx.a.db.from("suggestions").update({ suggested_text: "hacked" }).eq("analysis_id", ctx.freeAnalysis).select();
   assert(sug.error, "suggested_text update allowed!");
+  // storage_path drives server-side file deletion: it must not be user-writable.
+  const path = await ctx.a.db.from("documents").update({ storage_path: `${ctx.b.id}/victim.pdf` }).eq("id", ctx.doc.documentId).select();
+  assert(path.error, "storage_path update allowed!");
   const extras = await call(ctx.a, "POST", `/api/analyses/${ctx.freeAnalysis}/extras`, { kind: "cover_letter" });
   assert(extras.status === 403 && extras.data.error === "feature_locked", `extras ${extras.status}`);
 });
@@ -269,6 +282,9 @@ await step("accept suggestions → apply creates a NEW version; v1 unchanged", a
   const { data: v2 } = await ctx.a.db.from("resume_versions").select("data").eq("id", ctx.v2).single();
   assert(JSON.stringify(v1.data) !== JSON.stringify(v2.data), "v2 equals v1");
   assert(!/docker|kubernetes/i.test(JSON.stringify(v2.data)), "invented skill in v2");
+  // Applying the same decisions again (double click / retry) must not create a duplicate version.
+  const again = await call(ctx.a, "POST", `/api/analyses/${ctx.freeAnalysis}/apply`);
+  assert(again.status === 200 && again.data.versionId === ctx.v2 && again.data.unchanged === true, `re-apply ${JSON.stringify(again.data)}`);
 });
 
 await step("manual edit saves another version; resume editor renders", async () => {
@@ -296,6 +312,9 @@ await step("user B cannot see or touch user A's data", async () => {
   const { data } = await ctx.a.db.from("analyses").select("id").eq("id", ctx.freeAnalysis);
   assert(data.length === 1, "B deleted A's analysis");
   assert((await call(ctx.b, "GET", `/analyses/${ctx.freeAnalysis}`)).status === 404, "page leak");
+  assert((await call(ctx.b, "DELETE", `/api/documents/${ctx.doc.documentId}?scope=all`)).status === 404, "document delete leak");
+  assert((await call(ctx.b, "POST", `/api/analyses/${ctx.freeAnalysis}/apply`)).status === 404, "apply leak");
+  assert((await call(ctx.b, "POST", `/api/resumes/${ctx.resumeId}/versions`, { cv: {}, label: "x" })).status >= 400, "version on foreign resume");
   const { data: bView } = await ctx.b.db.from("resumes").select("id");
   assert(bView.length === 0, "B sees A's resumes");
 });

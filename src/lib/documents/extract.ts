@@ -24,6 +24,7 @@ export interface ExtractionResult {
 const MIN_CHARS_PER_PAGE = 40;
 const MIN_USEFUL_CHARS = 200;
 export const MAX_EXTRACTED_CHARS = 60000;
+const PDF_TIMEOUT_MS = 20000;
 
 export function normalizeExtractedText(raw: string): string {
   return raw
@@ -72,7 +73,11 @@ async function extractPdf(bytes: Uint8Array, ocr: OcrProvider): Promise<Extracti
   let text = "";
   let pages = 0;
   try {
-    const result = await parser.getText();
+    // A hostile or pathological PDF must not tie up the server.
+    const result = await Promise.race([
+      parser.getText(),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("pdf_timeout")), PDF_TIMEOUT_MS).unref?.()),
+    ]);
     text = result.text ?? "";
     pages = result.total ?? 0;
   } catch {

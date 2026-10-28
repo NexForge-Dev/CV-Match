@@ -13,7 +13,8 @@ Any Node.js 20+ host that runs `next start` works as well.
    npx supabase db push
    ```
    This creates all tables, RLS policies, billing functions, the seeded plans and the private
-   `cv-originals` storage bucket.
+   `cv-originals` storage bucket. Migrations in `supabase/migrations/` are applied in filename order;
+   never edit an applied migration — add a new file (e.g. `20261028000003_hardening.sql`).
 3. Authentication → URL configuration:
    - Site URL: `https://YOUR_DOMAIN`
    - Redirect URLs: `https://YOUR_DOMAIN/auth/callback`
@@ -46,7 +47,23 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 3. Deploy. `vercel.json` schedules `/api/cron/cleanup` daily; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically.
 4. Add your domain and update `NEXT_PUBLIC_APP_URL`, the Supabase Site URL/redirects and the Stripe webhook URL.
 
-## 4. Post-deploy checklist
+## 4. Monitoring, backups and recovery
+
+- **Health check:** `GET /api/health` returns `{"ok": true, "database": true}` (HTTP 200) or 503. It exposes no
+  versions, keys or user data — point your uptime monitor at it.
+- **Logs:** structured JSON with ids, codes, sizes and durations only (`src/lib/log.ts` redacts content).
+- **Backups:** Supabase takes daily backups on paid plans; enable **Point-in-Time Recovery** for production.
+  Test a restore into a separate project before launch. Stripe remains the source of truth for payments:
+  after a restore, replay recent events from the Stripe dashboard (Developers → Events → Resend) — the
+  webhook is idempotent.
+- **Deleted accounts and backups:** deleting an account removes its rows and stored files immediately, but copies
+  may remain in database backups until they expire under your backup retention. State this in the privacy policy;
+  do not promise immediate erasure from backups.
+- **Keys:** keep test and live Stripe keys in separate environments (Preview = test, Production = live). Rotate
+  `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_*` and `CRON_SECRET` if they are ever exposed. Only `NEXT_PUBLIC_*`
+  variables reach the browser.
+
+## 5. Post-deploy checklist
 
 - [ ] Sign up with a new email, confirm it, log in.
 - [ ] Upload a PDF and a DOCX CV; paste a job; run the free analysis.

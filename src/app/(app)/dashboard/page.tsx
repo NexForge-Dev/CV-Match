@@ -4,7 +4,7 @@ import { ArrowRight, Briefcase, FileSearch, FileText, ListChecks, PlusCircle } f
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
-import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
+import { analysesAvailable, getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { EmptyState, PageHeader, ScoreRing } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -49,7 +49,14 @@ export default async function DashboardPage() {
             <span className="badge bg-slate-100 text-ink-soft">{t.dashboard.paidLeft(credits.paid_credits)}</span>
             <span className="badge bg-slate-100 text-ink-soft">{t.dashboard.freeLeft(credits.free_credits)}</span>
           </div>
-          <Link href="/billing" className="link mt-3 inline-block text-sm">{t.nav.billing} →</Link>
+          {analysesAvailable(credits) === 0 ? (
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <p className="text-sm font-medium text-amber-800">{t.dashboard.noCredits}</p>
+              <Link href="/billing" className="btn-primary btn-sm">{t.dashboard.buy}</Link>
+            </div>
+          ) : (
+            <Link href="/billing" className="link mt-3 inline-block text-sm">{t.nav.billing} →</Link>
+          )}
         </div>
         <div className="card p-5">
           <p className="flex items-center gap-2 text-sm font-medium text-ink-muted"><ListChecks className="h-4 w-4" /> {t.dashboard.pending}</p>
