@@ -7,7 +7,10 @@ import { formatDate } from "@/lib/i18n/config";
 import { analysesAvailable, getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { EmptyState, PageHeader, ScoreRing } from "@/components/ui";
 
-export const metadata: Metadata = { title: "Dashboard" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.dashboard };
+}
 
 type Rel<T> = T | T[] | null;
 const one = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);

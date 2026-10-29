@@ -6,7 +6,10 @@ import { analysesAvailable, getCreditSummary } from "@/lib/server/credits";
 import { PageHeader } from "@/components/ui";
 import { NewAnalysisWizard, type ExistingResume, type SavedJob } from "@/components/app/NewAnalysisWizard";
 
-export const metadata: Metadata = { title: "New analysis" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.newAnalysis };
+}
 
 export default async function NewAnalysisPage({ searchParams }: { searchParams: Promise<{ resume?: string }> }) {
   const { supabase } = await requireUser("/new");

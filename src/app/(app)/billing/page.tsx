@@ -9,7 +9,10 @@ import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { Alert, PageHeader } from "@/components/ui";
 import { CheckoutButton, PortalButton } from "@/components/app/BillingButtons";
 
-export const metadata: Metadata = { title: "Billing" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.billing };
+}
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { supabase } = await requireUser("/billing");

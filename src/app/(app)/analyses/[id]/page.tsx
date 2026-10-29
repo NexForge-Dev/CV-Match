@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getDictionary } from "@/lib/i18n/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { uuidLike } from "@/lib/api";
@@ -8,7 +9,10 @@ import { matchResultSchema, type ScoreBreakdown } from "@/lib/analysis/match";
 import { planFeaturesSchema } from "@/lib/billing/plans";
 import { AnalysisView, type SuggestionRow } from "@/components/app/AnalysisView";
 
-export const metadata: Metadata = { title: "Analysis" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.analyses };
+}
 
 type Rel<T> = T | T[] | null;
 const one = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);

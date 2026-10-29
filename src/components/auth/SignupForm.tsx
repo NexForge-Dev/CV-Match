@@ -86,7 +86,7 @@ export function SignupForm() {
             <p className="mt-1 text-xs text-ink-muted">{t.auth.passwordHint}</p>
           </div>
           <label className="flex items-start gap-2 text-sm text-ink-soft">
-            <input type="checkbox" className="mt-0.5" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required />
+            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required />
             <span>
               {t.auth.acceptTerms}{" "}
               <Link href="/terms" className="link" target="_blank">{t.auth.terms}</Link> ·{" "}

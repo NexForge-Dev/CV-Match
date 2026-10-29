@@ -5,7 +5,10 @@ import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 
-export const metadata: Metadata = { title: "Documents" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.documents };
+}
 
 function size(bytes: number) {
   return bytes > 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;

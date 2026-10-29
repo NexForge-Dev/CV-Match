@@ -4,7 +4,10 @@ import { getDictionary } from "@/lib/i18n/server";
 import { PageHeader } from "@/components/ui";
 import { ProfileForm, SkillBank, type ProfileData } from "@/components/app/ProfileForms";
 
-export const metadata: Metadata = { title: "Profile" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.profile };
+}
 
 export default async function ProfilePage() {
   const { supabase } = await requireUser("/profile");

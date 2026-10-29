@@ -7,7 +7,10 @@ import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader, ScoreRing } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 
-export const metadata: Metadata = { title: "Analyses" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.analyses };
+}
 
 type Rel<T> = T | T[] | null;
 const one = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);

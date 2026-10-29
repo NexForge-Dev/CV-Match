@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getDictionary } from "@/lib/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { uuidLike } from "@/lib/api";
 import { cvDataSchema } from "@/lib/cv/schema";
 import { ResumeEditor, type VersionRow } from "@/components/app/ResumeEditor";
 
-export const metadata: Metadata = { title: "CV editor" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.resumes };
+}
 
 export default async function ResumePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

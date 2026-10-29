@@ -6,7 +6,10 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
 
-export const metadata: Metadata = { title: "CVs" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.resumes };
+}
 
 export default async function ResumesPage() {
   const { supabase } = await requireUser("/resumes");

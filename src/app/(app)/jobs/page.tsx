@@ -7,7 +7,10 @@ import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 
-export const metadata: Metadata = { title: "Saved jobs" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.jobs };
+}
 
 export default async function JobsPage() {
   const { supabase } = await requireUser("/jobs");

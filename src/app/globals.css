@@ -30,9 +30,9 @@ body {
   .btn-danger {
     @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
   }
-  /* 36px touch target on phones, compact on larger screens. */
+  /* 44px touch target on phones, compact on larger screens. */
   .btn-sm {
-    @apply min-h-9 px-3 py-1.5 text-xs sm:min-h-0;
+    @apply min-h-11 px-3 py-1.5 text-xs sm:min-h-0;
   }
   .card {
     @apply rounded-xl border border-slate-200 bg-white shadow-card;

@@ -5,7 +5,10 @@ import { getDictionary } from "@/lib/i18n/server";
 import { PageHeader } from "@/components/ui";
 import { DeleteAccount } from "@/components/app/DeleteAccount";
 
-export const metadata: Metadata = { title: "Account" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.nav.account };
+}
 
 export default async function AccountPage() {
   const { user } = await requireUser("/account");

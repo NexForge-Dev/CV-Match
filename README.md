@@ -179,7 +179,7 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Vercel + Supabase Cloud + Stripe
 1. Create a Supabase Cloud project, run `npx supabase db push`, set Auth URLs and a custom SMTP sender.
 2. Create a Stripe account; complete the test-mode flow from `docs/PAYMENTS.md`; then switch to live keys and a live webhook.
 3. Set the environment variables in your host (see `.env.example`).
-4. Fill in the legal pages: replace `privacy@cvmatch.example` and every `[OPERATOR: ...]` placeholder (`src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
+4. Fill in the legal pages: set `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS` and `LEGAL_CONTACT_EMAIL` (the texts live in `src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
 5. Optionally add `ANTHROPIC_API_KEY` for higher-quality parsing, wording and translation.
 6. Pull the production variables and run `ENV_FILE=.env.production.local npm run verify:keys` — it must report no blocking issues.
 
