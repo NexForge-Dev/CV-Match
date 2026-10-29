@@ -7,6 +7,7 @@ import { AuthShell } from "./AuthShell";
 import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
+import { safeNextPath } from "@/lib/safeNext";
 
 export function SignupForm() {
   const { t } = useI18n();
@@ -22,8 +23,7 @@ export function SignupForm() {
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   const plan = params.get("plan");
-  const rawNext = params.get("next");
-  const next = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : plan && plan !== "free" ? "/billing" : "/new";
+  const next = safeNextPath(params.get("next"), plan && plan !== "free" ? "/billing" : "/new");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

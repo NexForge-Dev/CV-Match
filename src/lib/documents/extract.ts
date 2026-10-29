@@ -67,9 +67,12 @@ function finalize(text: string, method: ExtractionResult["method"], pages: numbe
 }
 
 async function extractPdf(bytes: Uint8Array, ocr: OcrProvider): Promise<ExtractionResult> {
-  const { PDFParse } = await import("pdf-parse");
+  // "pdf-parse/worker" loads the pdf.js worker in-process and the canvas polyfills; importing it explicitly
+  // makes the serverless bundle (Vercel file tracing) include those files.
+  const [{ PDFParse }, { CanvasFactory, getData }] = await Promise.all([import("pdf-parse"), import("pdf-parse/worker")]);
+  PDFParse.setWorker(getData());
   // Copy: pdf.js may transfer/detach the buffer it receives.
-  const parser = new PDFParse({ data: new Uint8Array(bytes), isEvalSupported: false });
+  const parser = new PDFParse({ data: new Uint8Array(bytes), isEvalSupported: false, CanvasFactory });
   let text = "";
   let pages = 0;
   try {

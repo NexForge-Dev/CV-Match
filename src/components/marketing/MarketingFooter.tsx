@@ -18,6 +18,9 @@ export function MarketingFooter({ t }: { t: MarketingDict }) {
           <Link href="/terms" className="text-ink-soft hover:text-ink">
             {t.footer.terms}
           </Link>
+          <Link href="/legal" className="text-ink-soft hover:text-ink">
+            {t.footer.legal}
+          </Link>
           <LocaleSwitcher />
         </div>
       </div>

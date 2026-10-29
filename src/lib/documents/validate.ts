@@ -1,3 +1,5 @@
+import { inflateRawSync } from "node:zlib";
+
 export type FileKind = "pdf" | "docx";
 
 export type ValidationResult =
@@ -53,6 +55,8 @@ export function validateUpload(
     if (!zip) return { ok: false, code: "content_mismatch" };
     if (!zip.hasWordDocument) return { ok: false, code: "content_mismatch" };
     if (zip.entries > MAX_ZIP_ENTRIES || zip.uncompressedBytes > MAX_ZIP_UNCOMPRESSED || zip.zip64) return { ok: false, code: "unsafe_archive" };
+    // The declared sizes can lie: inflate for real, with a hard output cap, before the parser does.
+    if (!inflatesWithin(bytes, MAX_ZIP_UNCOMPRESSED)) return { ok: false, code: "unsafe_archive" };
   }
 
   return { ok: true, kind, safeName: sanitizeFileName(fileName) };
@@ -110,4 +114,45 @@ export function inspectZip(bytes: Uint8Array): ZipInfo | null {
     pos += 46 + nameLen + extraLen + commentLen;
   }
   return { entries: total, uncompressedBytes: uncompressed, hasWordDocument, zip64 };
+}
+
+/**
+ * Inflates every entry of the archive (from the central directory's local header offsets) with a
+ * running output cap. Returns false when the real uncompressed total exceeds `limit`, an entry uses an
+ * unsupported compression method, or the data is corrupt.
+ */
+export function inflatesWithin(bytes: Uint8Array, limit: number): boolean {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  for (let i = bytes.byteLength - 22; i >= Math.max(0, bytes.byteLength - 22 - 0xffff); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      eocd = i;
+      break;
+    }
+  }
+  if (eocd < 0) return false;
+  const total = view.getUint16(eocd + 10, true);
+  let pos = view.getUint32(eocd + 16, true);
+  let remaining = limit;
+  try {
+    for (let n = 0; n < total; n++) {
+      if (pos + 46 > bytes.byteLength || view.getUint32(pos, true) !== 0x02014b50) return false;
+      const method = view.getUint16(pos + 10, true);
+      const compressed = view.getUint32(pos + 20, true);
+      const local = view.getUint32(pos + 42, true);
+      if (local + 30 > bytes.byteLength || view.getUint32(local, true) !== 0x04034b50) return false;
+      const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+      if (start + compressed > bytes.byteLength) return false;
+      const data = bytes.subarray(start, start + compressed);
+      if (method === 0) remaining -= compressed;
+      else if (method === 8) remaining -= inflateRawSync(data, { maxOutputLength: remaining + 1 }).byteLength;
+      else return false;
+      if (remaining < 0) return false;
+      pos += 46 + view.getUint16(pos + 28, true) + view.getUint16(pos + 30, true) + view.getUint16(pos + 32, true);
+    }
+  } catch {
+    // RangeError from maxOutputLength (bomb) or a zlib error (corrupt data).
+    return false;
+  }
+  return true;
 }

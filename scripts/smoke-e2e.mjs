@@ -333,7 +333,7 @@ await step("Stripe webhook: signed pack purchase adds credits exactly once", asy
     id: `evt_smoke_${Date.now()}`,
     object: "event",
     type: "checkout.session.completed",
-    data: { object: { id: sessionId, object: "checkout.session", mode: "payment", payment_status: "paid", client_reference_id: ctx.a.id, metadata: { user_id: ctx.a.id, plan_id: "pack_5" } } },
+    data: { object: { id: sessionId, object: "checkout.session", mode: "payment", payment_status: "paid", client_reference_id: ctx.a.id, metadata: { user_id: ctx.a.id, plan_id: "pack_10" } } },
   });
   const header = stripe.webhooks.generateTestHeaderString({ payload, secret: process.env.STRIPE_WEBHOOK_SECRET });
   const bad = await fetch(`${BASE}/api/stripe/webhook`, { method: "POST", body: payload, headers: { "stripe-signature": "t=1,v1=bad" } });
@@ -343,7 +343,7 @@ await step("Stripe webhook: signed pack purchase adds credits exactly once", asy
     assert(r.status === 200, `webhook → ${r.status}`);
   }
   const { data } = await ctx.a.db.rpc("credit_summary");
-  assert(data[0].paid_credits === 5, `paid credits = ${data[0].paid_credits}`);
+  assert(data[0].paid_credits === 10, `paid credits = ${data[0].paid_credits}`);
 });
 
 await step("paid analysis unlocks all suggestions, cover letter and interview prep", async () => {

@@ -74,16 +74,18 @@ const en = {
     title: "Simple pricing",
     subtitle: "Prices in euros. Pay per pack or subscribe — cancel anytime.",
     perMonth: "/month",
+    perQuarter: "/3 months",
     oneTime: "one-time",
     analyses: (n: number) => `${n} ${n === 1 ? "analysis" : "analyses"}`,
     analysesPerMonth: (n: number) => `${n} analyses per month`,
+    analysesPerQuarter: (n: number) => `${n} analyses per 3 months`,
     suggestionsLimited: (n: number) => `Up to ${n} improvement suggestions`,
     suggestionsFull: "All improvement suggestions",
     coverLetter: "Personalized cover letter",
     interview: "Interview preparation",
     export: "PDF and DOCX export",
     cta: { free: "Start free", pack: "Buy pack", subscription: "Go Pro" },
-    popular: "Most flexible",
+    popular: "Best value",
     disclaimer: "Prices are set by the service and may change; the price shown at checkout applies.",
   },
   faq: {
@@ -111,7 +113,7 @@ const en = {
       },
       {
         q: "How do payments work?",
-        a: "Payments are processed by Stripe. Packs are one-time purchases of analysis credits. Pro is a monthly subscription you can cancel anytime; it stays active until the end of the paid period.",
+        a: "Payments are processed by Stripe. Packs are one-time purchases of analysis credits. Pro is a monthly or quarterly subscription you can cancel anytime; it stays active until the end of the paid period.",
       },
     ],
   },
@@ -124,13 +126,29 @@ const en = {
     tagline: "Honest, evidence-based CV tailoring.",
     privacy: "Privacy policy",
     terms: "Terms of use",
+    legal: "Legal notice",
     rights: "All rights reserved.",
   },
   legal: {
-    templateNote:
-      "This text is a template provided with the product. It must be reviewed and adapted by a qualified lawyer before commercial use. No certified legal compliance is claimed.",
     updated: "Last updated",
-    contactPlaceholderNote: "(placeholder — replace with your real contact address)",
+  },
+  legalNotice: {
+    title: "Legal notice",
+    intro: "Information about the provider of this service, in accordance with Spanish Law 34/2002 on information society services (LSSI-CE).",
+    sections: [
+      {
+        title: "1. Service provider",
+        paragraphs: ["Name: {operator}", "Tax ID (NIF): {taxId}", "Address: {address}", "Contact email: {email}"],
+      },
+      {
+        title: "2. Purpose",
+        paragraphs: ["CV Match is an online service that compares CVs with job descriptions and suggests improvements. Its use is governed by the terms of use and the privacy policy."],
+      },
+      {
+        title: "3. Intellectual property",
+        paragraphs: ["The software, design and texts of CV Match belong to the provider. Content uploaded by users remains theirs."],
+      },
+    ] as LegalSection[],
   },
   privacy: {
     title: "Privacy policy",
@@ -140,7 +158,7 @@ const en = {
       {
         title: "1. Controller and contact",
         paragraphs: [
-          "The service operator is the controller of your personal data. For any privacy request, contact privacy@cvmatch.example.",
+          "The controller of your personal data is {operator} (tax ID {taxId}), {address}. For any privacy request, contact {email}.",
         ],
       },
       {
@@ -165,16 +183,17 @@ const en = {
       {
         title: "4. Data minimisation and retention",
         paragraphs: [
-          "Original uploaded files are not stored by default: the text is extracted in memory and the file is discarded. If file storage is enabled by the operator, originals are kept in private storage and deleted automatically after a limited period or when you request it.",
+          "Original uploaded files are not stored by default: the text is extracted in memory and the file is discarded. If file storage is enabled, originals are kept in private storage and deleted automatically after a limited period or when you request it.",
           "Extracted text, CVs, versions, jobs and analyses are kept until you delete them or delete your account.",
-          "Deletion removes your data from the live service immediately. Copies may remain in encrypted infrastructure backups until those backups expire under the provider retention schedule [OPERATOR: state the period]; they are not used to restore your data.",
+          "Deletion removes your data from the live service immediately. Copies may remain in encrypted infrastructure backups until those backups expire, at most {backupDays} days after deletion; they are not used to restore your data.",
           "Payment records may be retained for the period required by law.",
         ],
       },
       {
         title: "5. Processors and transfers",
         paragraphs: [
-          "Supabase (hosting, database and authentication), Stripe (payments) and, when enabled by the operator, Anthropic (AI processing of CV and job text to generate suggestions). These providers act on our instructions under data processing agreements. Where data is transferred outside the EEA, appropriate safeguards such as Standard Contractual Clauses are used.",
+          "Vercel (application hosting and technical request logs), Supabase (database, authentication and file storage), Stripe (payments) and Anthropic (AI processing of CV and job text to structure documents and write suggestions; Anthropic does not use this data to train its models). These providers act on our instructions under data processing agreements.",
+          "Some of these providers are based in the United States. Transfers rely on the EU-US Data Privacy Framework where the provider is certified and, in all cases, on the Standard Contractual Clauses approved by the European Commission.",
           "We do not sell your personal data and do not use it for advertising.",
         ],
       },
@@ -223,7 +242,7 @@ const en = {
         title: "4. Plans, payments and refunds",
         paragraphs: [
           "Payments are processed by Stripe. Analysis packs are one-time purchases of credits that are consumed when an analysis is run. A credit is returned automatically if an analysis fails for technical reasons.",
-          "Pro subscriptions renew monthly until cancelled. You can cancel at any time from the billing page; access continues until the end of the paid period. Statutory consumer rights, including any applicable withdrawal rights, are not affected.",
+          "Pro subscriptions renew at the end of each billing period (monthly or every 3 months) until cancelled. You can cancel at any time from the billing page; access continues until the end of the paid period. Statutory consumer rights, including any applicable withdrawal rights, are not affected.",
           "Prices, limits and plan benefits may change; changes do not affect periods or credits already paid.",
         ],
       },
@@ -320,16 +339,18 @@ const pt: MarketingDict = {
     title: "Preços simples",
     subtitle: "Valores em euros. Compre um pacote ou assine — cancele quando quiser.",
     perMonth: "/mês",
+    perQuarter: "/3 meses",
     oneTime: "pagamento único",
     analyses: (n: number) => `${n} ${n === 1 ? "análise" : "análises"}`,
     analysesPerMonth: (n: number) => `${n} análises por mês`,
+    analysesPerQuarter: (n: number) => `${n} análises a cada 3 meses`,
     suggestionsLimited: (n: number) => `Até ${n} sugestões de melhoria`,
     suggestionsFull: "Todas as sugestões de melhoria",
     coverLetter: "Carta de apresentação personalizada",
     interview: "Preparação para entrevista",
     export: "Exportação em PDF e DOCX",
     cta: { free: "Começar grátis", pack: "Comprar pacote", subscription: "Assinar Pro" },
-    popular: "Mais flexível",
+    popular: "Melhor custo-benefício",
     disclaimer: "Os preços são definidos pelo serviço e podem mudar; vale o preço exibido no checkout.",
   },
   faq: {
@@ -357,7 +378,7 @@ const pt: MarketingDict = {
       },
       {
         q: "Como funcionam os pagamentos?",
-        a: "Os pagamentos são processados pela Stripe. Pacotes são compras únicas de créditos de análise. O Pro é uma assinatura mensal que pode ser cancelada a qualquer momento; ela continua ativa até o fim do período pago.",
+        a: "Os pagamentos são processados pela Stripe. Pacotes são compras únicas de créditos de análise. O Pro é uma assinatura mensal ou trimestral que pode ser cancelada a qualquer momento; ela continua ativa até o fim do período pago.",
       },
     ],
   },
@@ -370,13 +391,29 @@ const pt: MarketingDict = {
     tagline: "Adaptação de currículo honesta e baseada em evidências.",
     privacy: "Política de privacidade",
     terms: "Termos de uso",
+    legal: "Aviso legal",
     rights: "Todos os direitos reservados.",
   },
   legal: {
-    templateNote:
-      "Este texto é um modelo fornecido com o produto. Ele deve ser revisado e adaptado por um advogado qualificado antes do uso comercial. Não declaramos conformidade jurídica certificada.",
     updated: "Última atualização",
-    contactPlaceholderNote: "(endereço provisório — substitua pelo seu contato real)",
+  },
+  legalNotice: {
+    title: "Aviso legal",
+    intro: "Informações sobre o prestador deste serviço, conforme a Lei espanhola 34/2002 de serviços da sociedade da informação (LSSI-CE).",
+    sections: [
+      {
+        title: "1. Prestador do serviço",
+        paragraphs: ["Nome: {operator}", "NIF: {taxId}", "Endereço: {address}", "Email de contato: {email}"],
+      },
+      {
+        title: "2. Finalidade",
+        paragraphs: ["O CV Match é um serviço online que compara currículos com descrições de vagas e sugere melhorias. O uso é regido pelos termos de uso e pela política de privacidade."],
+      },
+      {
+        title: "3. Propriedade intelectual",
+        paragraphs: ["O software, o design e os textos do CV Match pertencem ao prestador. O conteúdo enviado pelos usuários continua sendo deles."],
+      },
+    ] as LegalSection[],
   },
   privacy: {
     title: "Política de privacidade",
@@ -385,7 +422,7 @@ const pt: MarketingDict = {
     sections: [
       {
         title: "1. Responsável e contato",
-        paragraphs: ["O operador do serviço é o responsável pelo tratamento dos seus dados. Para qualquer solicitação de privacidade, escreva para privacy@cvmatch.example."],
+        paragraphs: ["O responsável pelo tratamento dos seus dados é {operator} (NIF {taxId}), {address}. Para qualquer solicitação de privacidade, escreva para {email}."],
       },
       {
         title: "2. Dados tratados",
@@ -409,16 +446,17 @@ const pt: MarketingDict = {
       {
         title: "4. Minimização e retenção",
         paragraphs: [
-          "Por padrão, os arquivos originais não são armazenados: o texto é extraído em memória e o arquivo é descartado. Se o operador ativar o armazenamento, os originais ficam em armazenamento privado e são excluídos automaticamente após um período limitado ou quando você pedir.",
+          "Por padrão, os arquivos originais não são armazenados: o texto é extraído em memória e o arquivo é descartado. Se o armazenamento estiver ativado, os originais ficam em armazenamento privado e são excluídos automaticamente após um período limitado ou quando você pedir.",
           "Texto extraído, currículos, versões, vagas e análises ficam guardados até você excluí-los ou excluir a conta.",
-          "A exclusão remove seus dados do serviço imediatamente. Cópias podem permanecer em backups criptografados da infraestrutura até expirarem conforme o prazo de retenção do provedor [OPERADOR: informe o prazo]; elas não são usadas para restaurar seus dados.",
+          "A exclusão remove seus dados do serviço imediatamente. Cópias podem permanecer em backups criptografados da infraestrutura até expirarem, no máximo {backupDays} dias após a exclusão; elas não são usadas para restaurar seus dados.",
           "Registros de pagamento podem ser mantidos pelo prazo exigido por lei.",
         ],
       },
       {
         title: "5. Operadores e transferências",
         paragraphs: [
-          "Supabase (hospedagem, banco de dados e autenticação), Stripe (pagamentos) e, quando ativado pelo operador, Anthropic (processamento por IA do texto do currículo e da vaga para gerar sugestões). Esses fornecedores atuam sob nossas instruções, com acordos de tratamento de dados. Quando há transferência para fora do EEE, são usadas salvaguardas adequadas, como Cláusulas Contratuais Padrão.",
+          "Vercel (hospedagem da aplicação e logs técnicos de requisições), Supabase (banco de dados, autenticação e armazenamento de arquivos), Stripe (pagamentos) e Anthropic (processamento por IA do texto do currículo e da vaga para estruturar documentos e redigir sugestões; a Anthropic não usa esses dados para treinar seus modelos). Esses fornecedores atuam sob nossas instruções, com acordos de tratamento de dados.",
+          "Alguns desses fornecedores estão nos Estados Unidos. As transferências se baseiam no EU-US Data Privacy Framework quando o fornecedor é certificado e, em todos os casos, nas Cláusulas Contratuais Padrão aprovadas pela Comissão Europeia.",
           "Não vendemos seus dados pessoais e não os usamos para publicidade.",
         ],
       },
@@ -467,7 +505,7 @@ const pt: MarketingDict = {
         title: "4. Planos, pagamentos e reembolsos",
         paragraphs: [
           "Os pagamentos são processados pela Stripe. Pacotes de análises são compras únicas de créditos, consumidos quando uma análise é executada. O crédito é devolvido automaticamente se uma análise falhar por motivo técnico.",
-          "A assinatura Pro renova mensalmente até ser cancelada. Você pode cancelar a qualquer momento na página de cobrança; o acesso continua até o fim do período pago. Direitos legais do consumidor, incluindo eventual direito de arrependimento, não são afetados.",
+          "A assinatura Pro renova ao fim de cada período (mensal ou a cada 3 meses) até ser cancelada. Você pode cancelar a qualquer momento na página de cobrança; o acesso continua até o fim do período pago. Direitos legais do consumidor, incluindo eventual direito de arrependimento, não são afetados.",
           "Preços, limites e benefícios dos planos podem mudar; as mudanças não afetam períodos ou créditos já pagos.",
         ],
       },
@@ -562,16 +600,18 @@ const es: MarketingDict = {
     title: "Precios sencillos",
     subtitle: "Precios en euros. Compra un paquete o suscríbete — cancela cuando quieras.",
     perMonth: "/mes",
+    perQuarter: "/3 meses",
     oneTime: "pago único",
     analyses: (n: number) => `${n} ${n === 1 ? "análisis" : "análisis"}`,
     analysesPerMonth: (n: number) => `${n} análisis al mes`,
+    analysesPerQuarter: (n: number) => `${n} análisis cada 3 meses`,
     suggestionsLimited: (n: number) => `Hasta ${n} sugerencias de mejora`,
     suggestionsFull: "Todas las sugerencias de mejora",
     coverLetter: "Carta de presentación personalizada",
     interview: "Preparación de entrevista",
     export: "Exportación en PDF y DOCX",
     cta: { free: "Empezar gratis", pack: "Comprar paquete", subscription: "Hazte Pro" },
-    popular: "Más flexible",
+    popular: "Mejor precio",
     disclaimer: "Los precios los fija el servicio y pueden cambiar; se aplica el precio mostrado en el pago.",
   },
   faq: {
@@ -599,7 +639,7 @@ const es: MarketingDict = {
       },
       {
         q: "¿Cómo funcionan los pagos?",
-        a: "Los pagos los procesa Stripe. Los paquetes son compras únicas de créditos de análisis. Pro es una suscripción mensual que puedes cancelar cuando quieras; sigue activa hasta el final del periodo pagado.",
+        a: "Los pagos los procesa Stripe. Los paquetes son compras únicas de créditos de análisis. Pro es una suscripción mensual o trimestral que puedes cancelar cuando quieras; sigue activa hasta el final del periodo pagado.",
       },
     ],
   },
@@ -612,13 +652,29 @@ const es: MarketingDict = {
     tagline: "Adaptación de currículum honesta y basada en evidencias.",
     privacy: "Política de privacidad",
     terms: "Términos de uso",
+    legal: "Aviso legal",
     rights: "Todos los derechos reservados.",
   },
   legal: {
-    templateNote:
-      "Este texto es una plantilla incluida con el producto. Debe ser revisado y adaptado por un abogado cualificado antes de su uso comercial. No se declara ningún cumplimiento legal certificado.",
     updated: "Última actualización",
-    contactPlaceholderNote: "(dirección provisional — sustitúyela por tu contacto real)",
+  },
+  legalNotice: {
+    title: "Aviso legal",
+    intro: "Información sobre el titular de este servicio, conforme a la Ley 34/2002 de servicios de la sociedad de la información y de comercio electrónico (LSSI-CE).",
+    sections: [
+      {
+        title: "1. Titular del servicio",
+        paragraphs: ["Titular: {operator}", "NIF: {taxId}", "Domicilio: {address}", "Correo electrónico de contacto: {email}"],
+      },
+      {
+        title: "2. Objeto",
+        paragraphs: ["CV Match es un servicio en línea que compara currículums con descripciones de ofertas y sugiere mejoras. Su uso se rige por los términos de uso y la política de privacidad."],
+      },
+      {
+        title: "3. Propiedad intelectual",
+        paragraphs: ["El software, el diseño y los textos de CV Match pertenecen al titular. El contenido que suben los usuarios sigue siendo suyo."],
+      },
+    ] as LegalSection[],
   },
   privacy: {
     title: "Política de privacidad",
@@ -627,7 +683,7 @@ const es: MarketingDict = {
     sections: [
       {
         title: "1. Responsable y contacto",
-        paragraphs: ["El operador del servicio es el responsable del tratamiento de tus datos. Para cualquier solicitud de privacidad, escribe a privacy@cvmatch.example."],
+        paragraphs: ["El responsable del tratamiento de tus datos es {operator} (NIF {taxId}), {address}. Para cualquier solicitud de privacidad, escribe a {email}."],
       },
       {
         title: "2. Datos que tratamos",
@@ -651,16 +707,17 @@ const es: MarketingDict = {
       {
         title: "4. Minimización y conservación",
         paragraphs: [
-          "Por defecto no se guardan los archivos originales: el texto se extrae en memoria y el archivo se descarta. Si el operador activa el almacenamiento, los originales se guardan en almacenamiento privado y se eliminan automáticamente tras un periodo limitado o cuando lo pidas.",
+          "Por defecto no se guardan los archivos originales: el texto se extrae en memoria y el archivo se descarta. Si el almacenamiento está activado, los originales se guardan en almacenamiento privado y se eliminan automáticamente tras un periodo limitado o cuando lo pidas.",
           "El texto extraído, los currículums, versiones, ofertas y análisis se conservan hasta que los elimines o elimines tu cuenta.",
-          "La eliminación borra tus datos del servicio de inmediato. Pueden quedar copias en copias de seguridad cifradas de la infraestructura hasta que caduquen según el plazo de retención del proveedor [OPERADOR: indica el plazo]; no se usan para restaurar tus datos.",
+          "La eliminación borra tus datos del servicio de inmediato. Pueden quedar copias en copias de seguridad cifradas de la infraestructura hasta que caduquen, como máximo {backupDays} días después de la eliminación; no se usan para restaurar tus datos.",
           "Los registros de pago pueden conservarse durante el plazo que exija la ley.",
         ],
       },
       {
         title: "5. Encargados y transferencias",
         paragraphs: [
-          "Supabase (alojamiento, base de datos y autenticación), Stripe (pagos) y, cuando lo activa el operador, Anthropic (procesamiento con IA del texto del currículum y de la oferta para generar sugerencias). Estos proveedores actúan siguiendo nuestras instrucciones mediante contratos de encargo del tratamiento. Si hay transferencias fuera del EEE, se aplican garantías adecuadas como las Cláusulas Contractuales Tipo.",
+          "Vercel (alojamiento de la aplicación y registros técnicos de peticiones), Supabase (base de datos, autenticación y almacenamiento de archivos), Stripe (pagos) y Anthropic (procesamiento con IA del texto del currículum y de la oferta para estructurar documentos y redactar sugerencias; Anthropic no usa estos datos para entrenar sus modelos). Estos proveedores actúan siguiendo nuestras instrucciones mediante contratos de encargo del tratamiento.",
+          "Algunos de estos proveedores están en Estados Unidos. Las transferencias se basan en el Marco de Privacidad de Datos UE-EE. UU. cuando el proveedor está certificado y, en todo caso, en las Cláusulas Contractuales Tipo aprobadas por la Comisión Europea.",
           "No vendemos tus datos personales ni los usamos para publicidad.",
         ],
       },
@@ -709,7 +766,7 @@ const es: MarketingDict = {
         title: "4. Planes, pagos y reembolsos",
         paragraphs: [
           "Los pagos los procesa Stripe. Los paquetes de análisis son compras únicas de créditos que se consumen al ejecutar un análisis. El crédito se devuelve automáticamente si un análisis falla por motivos técnicos.",
-          "La suscripción Pro se renueva mensualmente hasta que la canceles. Puedes cancelarla en cualquier momento desde la página de facturación; el acceso continúa hasta el final del periodo pagado. Esto no afecta a tus derechos legales como consumidor, incluido el derecho de desistimiento cuando proceda.",
+          "La suscripción Pro se renueva al final de cada periodo (mensual o cada 3 meses) hasta que la canceles. Puedes cancelarla en cualquier momento desde la página de facturación; el acceso continúa hasta el final del periodo pagado. Esto no afecta a tus derechos legales como consumidor, incluido el derecho de desistimiento cuando proceda.",
           "Los precios, límites y beneficios de los planes pueden cambiar; los cambios no afectan a periodos o créditos ya pagados.",
         ],
       },
@@ -737,4 +794,4 @@ const es: MarketingDict = {
 
 export const marketing: Record<"en" | "pt" | "es", MarketingDict> = { en, pt, es };
 
-export const LEGAL_LAST_UPDATED = "2026-10-28";
+export const LEGAL_LAST_UPDATED = "2026-10-29";

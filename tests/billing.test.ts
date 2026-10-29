@@ -56,17 +56,17 @@ const noFetch = async () => {
 describe("stripe webhook handler", () => {
   it("adds pack credits once per checkout session, even if the event is retried", async () => {
     const { store, ledger } = memoryStore();
-    const session = { id: "cs_1", mode: "payment", payment_status: "paid", metadata: { user_id: "user-1", plan_id: "pack_5" }, client_reference_id: "user-1" };
+    const session = { id: "cs_1", mode: "payment", payment_status: "paid", metadata: { user_id: "user-1", plan_id: "pack_10" }, client_reference_id: "user-1" };
     expect(await handleStripeEvent(event("evt_1", "checkout.session.completed", session), store, noFetch)).toBe("credits_added");
     expect(await handleStripeEvent(event("evt_1", "checkout.session.completed", session), store, noFetch)).toBe("duplicate");
     // Same session delivered under a different event id (e.g. async_payment_succeeded) is still credited once.
     await handleStripeEvent(event("evt_2", "checkout.session.async_payment_succeeded", session), store, noFetch);
-    expect([...ledger.values()]).toEqual([{ userId: "user-1", amount: 5 }]);
+    expect([...ledger.values()]).toEqual([{ userId: "user-1", amount: 10 }]);
   });
 
   it("does not credit unpaid sessions or unknown plans", async () => {
     const { store, ledger } = memoryStore();
-    await handleStripeEvent(event("evt_3", "checkout.session.completed", { id: "cs_2", mode: "payment", payment_status: "unpaid", metadata: { user_id: "u", plan_id: "pack_5" } }), store, noFetch);
+    await handleStripeEvent(event("evt_3", "checkout.session.completed", { id: "cs_2", mode: "payment", payment_status: "unpaid", metadata: { user_id: "u", plan_id: "pack_10" } }), store, noFetch);
     await handleStripeEvent(event("evt_4", "checkout.session.completed", { id: "cs_3", mode: "payment", payment_status: "paid", metadata: { user_id: "u", plan_id: "pro_monthly" } }), store, noFetch);
     await handleStripeEvent(event("evt_5", "checkout.session.completed", { id: "cs_4", mode: "payment", payment_status: "paid", metadata: { user_id: "u", plan_id: "nope" } }), store, noFetch);
     expect(ledger.size).toBe(0);
@@ -120,7 +120,7 @@ describe("stripe webhook handler", () => {
 
   it("a failed asynchronous payment never grants credits", async () => {
     const { store, ledger } = memoryStore();
-    const session = { id: "cs_9", mode: "payment", payment_status: "unpaid", metadata: { user_id: "user-1", plan_id: "pack_5" } };
+    const session = { id: "cs_9", mode: "payment", payment_status: "unpaid", metadata: { user_id: "user-1", plan_id: "pack_10" } };
     expect(await handleStripeEvent(event("evt_12", "checkout.session.completed", session), store, noFetch)).toBe("awaiting_payment");
     expect(await handleStripeEvent(event("evt_13", "checkout.session.async_payment_failed", session), store, noFetch)).toBe("ignored");
     expect(ledger.size).toBe(0);

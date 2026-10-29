@@ -7,7 +7,7 @@ import { coverLetter, interviewPrep } from "@/lib/ai/pipeline";
 import { planFeaturesSchema } from "@/lib/billing/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadVersion } from "@/lib/server/resumes";
-import { assertRateLimit, recordUsage } from "@/lib/server/usage";
+import { completeUsage, reserveUsage } from "@/lib/server/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,7 +31,7 @@ export const POST = withUser<Ctx>(async (req, { params }, { user, supabase }) =>
   if (!features[kind]) throw new HttpError("feature_locked");
 
   const admin = createAdminClient();
-  await assertRateLimit(admin, user.id);
+  const usageId = await reserveUsage(admin, user.id, kind, id);
 
   const version = await loadVersion(supabase, analysis.resume_version_id);
   const job = (Array.isArray(analysis.job_descriptions) ? analysis.job_descriptions[0] : analysis.job_descriptions) as { title: string; company: string } | null;
@@ -47,7 +47,7 @@ export const POST = withUser<Ctx>(async (req, { params }, { user, supabase }) =>
   // engine/fallback let the UI say honestly which engine produced the text.
   const meta = { engine: result.usage.provider, fallback: result.fallback };
   const content = kind === "cover_letter" ? { text: result.value, ...meta } : { items: result.value, ...meta };
-  await recordUsage(admin, user.id, kind, result.usage, id);
+  await completeUsage(admin, usageId, result.usage);
 
   const { error } = await admin.from("analysis_extras").upsert({ analysis_id: id, user_id: user.id, kind, content, created_at: new Date().toISOString() }, { onConflict: "analysis_id,kind" });
   if (error) throw error;

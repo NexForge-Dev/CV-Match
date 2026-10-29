@@ -117,13 +117,15 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase connection |
-| `ANTHROPIC_API_KEY`, `AI_MODEL`, `AI_PROVIDER` (optional: `heuristic` forces the free engine) | AI provider — Claude is used automatically when the key is set |
-| `UPLOAD_MAX_BYTES` | Upload limit (default 5 MB) |
+| `ANTHROPIC_API_KEY`, `AI_MODEL_EXTRACT`, `AI_MODEL_WRITE`, `AI_PROVIDER` (optional: `heuristic` forces the free engine) | AI provider — Claude is used automatically when the key is set |
+| `UPLOAD_MAX_BYTES` | Upload limit (default 4 MB — Vercel rejects bodies over 4.5 MB) |
 | `STORE_ORIGINAL_FILES` | Keep original files in Storage (default `false`: parsed in memory and discarded) |
 | `DOCUMENT_RETENTION_DAYS` | Retention for stored originals (daily cron) |
 | `OCR_PROVIDER`, `OCR_HTTP_URL`, `OCR_HTTP_TOKEN` | Optional OCR adapter |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments (test keys first) |
 | `CRON_SECRET` | Protects `/api/cron/cleanup` |
+| `STRIPE_AUTOMATIC_TAX` | `true` turns on Stripe Tax (VAT) at checkout |
+| `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_BACKUP_RETENTION_DAYS` | Provider identity shown on `/legal` (LSSI-CE) and `/privacy` (GDPR) — required in production |
 
 **Plans and prices** are rows in the `plans` table — see [docs/PAYMENTS.md](./docs/PAYMENTS.md).
 

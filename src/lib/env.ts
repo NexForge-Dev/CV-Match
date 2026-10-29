@@ -16,11 +16,18 @@ const serverSchema = z.object({
   // Unset: Claude is used automatically when ANTHROPIC_API_KEY is present; "heuristic" forces the rule-based engine.
   AI_PROVIDER: z.preprocess((v) => (v === "" ? undefined : v), z.enum(["heuristic", "anthropic"]).optional()),
   ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default("claude-opus-5-5"),
+  // CV/job parsing (verbatim copy) on a cheap model; suggestions, cover letter and interview prep on a stronger one.
+  AI_MODEL_EXTRACT: z.string().default("claude-haiku-5-5"),
+  AI_MODEL_WRITE: z.string().default("claude-sonnet-5-5"),
   AI_MAX_INPUT_CHARS: intFromEnv(40000),
   AI_RATE_LIMIT_PER_MINUTE: intFromEnv(10),
+  // Cost caps: AI calls per user per day (uploads and job parsing consume no credits), and
+  // cover letter / interview prep generations per analysis.
+  AI_DAILY_LIMIT: intFromEnv(40),
+  AI_EXTRAS_PER_ANALYSIS: intFromEnv(2),
 
-  UPLOAD_MAX_BYTES: intFromEnv(5 * 1024 * 1024),
+  // Vercel rejects request bodies over 4.5 MB before the route runs, so stay below that.
+  UPLOAD_MAX_BYTES: intFromEnv(4_000_000),
   STORE_ORIGINAL_FILES: z.enum(["true", "false"]).default("false"),
   DOCUMENT_RETENTION_DAYS: intFromEnv(30),
   OCR_PROVIDER: z.enum(["none", "http"]).default("none"),
@@ -29,6 +36,8 @@ const serverSchema = z.object({
 
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // "true" enables Stripe Tax on checkout (VAT computed from the customer's address).
+  STRIPE_AUTOMATIC_TAX: z.enum(["true", "false"]).default("false"),
   CRON_SECRET: z.string().optional(),
 });
 

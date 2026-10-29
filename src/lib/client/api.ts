@@ -14,6 +14,8 @@ export async function api<T = unknown>(url: string, init: RequestInit & { json?:
       body: json !== undefined ? JSON.stringify(json) : rest.body,
     });
     const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    // 413 without our JSON body: the hosting platform rejected an oversized upload before the route ran.
+    if (res.status === 413 && !body.error) return { ok: false, error: "upload_invalid", detail: "too_large" };
     if (!res.ok) return { ok: false, error: (body.error as string) ?? "server_error", detail: body.detail as string | undefined };
     return { ok: true, data: body as T };
   } catch {

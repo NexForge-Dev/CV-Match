@@ -24,6 +24,19 @@ const LIVE = ["active", "trialing", "past_due"];
 
 export type FetchSubscription = (id: string) => Promise<Stripe.Subscription>;
 
+const PRICE_LOOKUP_PREFIX = "cvmatch_";
+
+/**
+ * The plan a subscription is on right now. Prices synced by `npm run stripe:sync` carry the lookup key
+ * `cvmatch_<plan id>`, which follows plan switches made in the customer portal; the checkout metadata
+ * only says which plan the subscription started on.
+ */
+function currentPlanId(sub: Stripe.Subscription): string | undefined {
+  const lookupKey = sub.items?.data?.[0]?.price?.lookup_key;
+  if (lookupKey?.startsWith(PRICE_LOOKUP_PREFIX)) return lookupKey.slice(PRICE_LOOKUP_PREFIX.length);
+  return sub.metadata?.plan_id;
+}
+
 const iso = (unix: number | null | undefined) => (unix ? new Date(unix * 1000).toISOString() : null);
 
 /**
@@ -36,7 +49,7 @@ async function syncSubscription(eventSub: Stripe.Subscription, store: BillingSto
   const sub = await fetchSubscription(eventSub.id);
   const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
   const userId = sub.metadata?.user_id || fallbackUserId || (await store.userIdForCustomer(customerId));
-  const planId = sub.metadata?.plan_id;
+  const planId = currentPlanId(sub);
   if (!userId || !planId) return "ignored_missing_metadata";
   const plan = await store.getPlan(planId);
   if (!plan || plan.kind !== "subscription") return "ignored_unknown_plan";
@@ -60,7 +73,8 @@ async function syncSubscription(eventSub: Stripe.Subscription, store: BillingSto
 }
 
 async function fulfillPack(session: Stripe.Checkout.Session, store: BillingStore) {
-  if (session.payment_status !== "paid") return "awaiting_payment";
+  // "no_payment_required": a 100% promotion code; the pack is still granted.
+  if (session.payment_status !== "paid" && session.payment_status !== "no_payment_required") return "awaiting_payment";
   const userId = session.metadata?.user_id || session.client_reference_id;
   const planId = session.metadata?.plan_id;
   if (!userId || !planId) return "ignored_missing_metadata";

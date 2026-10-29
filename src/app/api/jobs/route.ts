@@ -4,7 +4,7 @@ import { parseJson, withUser } from "@/lib/api";
 import { cvLanguageSchema } from "@/lib/cv/schema";
 import { extractJobRequirements } from "@/lib/ai/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertRateLimit, recordUsage } from "@/lib/server/usage";
+import { completeUsage, reserveUsage } from "@/lib/server/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,9 +27,9 @@ const schema = z.object({
 export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   const body = await parseJson(req, schema);
   const admin = createAdminClient();
-  await assertRateLimit(admin, user.id);
+  const usageId = await reserveUsage(admin, user.id, "extract_requirements");
   const extracted = await extractJobRequirements(body.rawText);
-  await recordUsage(admin, user.id, "extract_requirements", extracted.usage);
+  await completeUsage(admin, usageId, extracted.usage);
 
   const { data, error } = await supabase
     .from("job_descriptions")

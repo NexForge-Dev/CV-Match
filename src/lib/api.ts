@@ -14,6 +14,7 @@ export type ErrorCode =
   | "payment_required"
   | "feature_locked"
   | "rate_limited"
+  | "usage_limit"
   | "upload_invalid"
   | "extraction_failed"
   | "conflict"
@@ -28,6 +29,7 @@ const STATUS: Record<ErrorCode, number> = {
   payment_required: 402,
   feature_locked: 403,
   rate_limited: 429,
+  usage_limit: 429,
   upload_invalid: 400,
   extraction_failed: 422,
   conflict: 409,

@@ -9,7 +9,7 @@ import { detectInjection } from "@/lib/ai/safety";
 import { parseCv } from "@/lib/ai/pipeline";
 import { emptyCv } from "@/lib/cv/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertRateLimit, recordUsage } from "@/lib/server/usage";
+import { completeUsage, reserveUsage } from "@/lib/server/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,8 +23,8 @@ const pastedSchema = z.object({ text: z.string().min(30).max(MAX_EXTRACTED_CHARS
  */
 export const POST = withUser(async (req, _ctx, { user }) => {
   const admin = createAdminClient();
-  await assertRateLimit(admin, user.id);
   const e = env();
+  let usageId: number;
 
   let extraction: ExtractionResult;
   let fileMeta: { name: string; mime: string; kind: "pdf" | "docx" | "text"; size: number };
@@ -41,6 +41,8 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     const validation = validateUpload(bytes, file.name, file.type, e.UPLOAD_MAX_BYTES);
     if (!validation.ok) throw new HttpError("upload_invalid", validation.code);
 
+    // Reserved before parsing so every accepted upload counts against the caps, also when no AI runs.
+    usageId = await reserveUsage(admin, user.id, "parse_cv");
     extraction = await extractText(bytes, validation.kind);
     fileMeta = { name: validation.safeName, mime: validation.kind === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", kind: validation.kind, size: bytes.byteLength };
 
@@ -54,6 +56,7 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     }
   } else {
     const { text } = await parseJson(req, pastedSchema);
+    usageId = await reserveUsage(admin, user.id, "parse_cv");
     const normalized = normalizeExtractedText(text);
     extraction = { text: normalized, status: normalized.length >= 200 ? "ok" : "low_text", method: "none", warnings: normalized.length >= 200 ? [] : ["very_short_text"] };
     fileMeta = { name: "pasted-text.txt", mime: "text/plain", kind: "text", size: Buffer.byteLength(text) };
@@ -66,7 +69,7 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     const parsed = await parseCv(extraction.text);
     cv = parsed.value;
     provider = parsed.usage.provider;
-    await recordUsage(admin, user.id, "parse_cv", parsed.usage);
+    await completeUsage(admin, usageId, parsed.usage);
   }
 
   const { data: doc, error } = await admin

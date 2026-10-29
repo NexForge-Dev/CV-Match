@@ -52,39 +52,52 @@ const LlmInterview = z.object({ items: z.array(z.object({ requirement: z.string(
 
 const LANG_NAME = { pt: "Portuguese", es: "Spanish", en: "English" } as const;
 
+/**
+ * Total time budget per call, retries included. Extraction runs in 60s routes and writing in 120s
+ * routes (see `maxDuration`); the remainder leaves time for the rule-based fallback, the database
+ * writes and, on failure, the credit refund before the platform kills the function.
+ */
+const DEADLINE_MS = { extract: 40_000, write: 85_000 } as const;
+
 export class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
   private client: Anthropic;
 
+  /**
+   * Two models keep the cost per analysis low: `extract` copies structure out of the CV and the
+   * job ad (verbatim, grounded afterwards), `write` produces the wording the user reads.
+   */
   constructor(
     apiKey: string,
-    private model: string,
+    private models: { extract: string; write: string },
     private maxChars: number,
   ) {
-    this.client = new Anthropic({ apiKey, maxRetries: 2, timeout: 120_000 });
+    this.client = new Anthropic({ apiKey, maxRetries: 1, timeout: DEADLINE_MS.write });
   }
 
-  private async call<S extends z.ZodType>(schema: S, system: string, user: string): Promise<{ data: z.infer<S>; usage: AiUsage }> {
+  private async call<S extends z.ZodType>(task: "extract" | "write", schema: S, system: string, user: string): Promise<{ data: z.infer<S>; usage: AiUsage }> {
+    const model = this.models[task];
     const response = await this.client.beta.messages.parse({
-      model: this.model,
+      model,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+      // Haiku has no server-side refusal fallback; a refusal there falls back to the rule-based engine.
+      ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }),
       system: `${system}\n\n${UNTRUSTED_DATA_RULES}`,
       messages: [{ role: "user", content: user }],
       output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-    });
+    }, { timeout: DEADLINE_MS[task], signal: AbortSignal.timeout(DEADLINE_MS[task]) });
     if (response.stop_reason === "refusal") throw new Error("model_refusal");
     if (response.stop_reason === "max_tokens") throw new Error("model_truncated");
     if (!response.parsed_output) throw new Error("model_unparseable");
     return {
       data: response.parsed_output as z.infer<S>,
-      usage: { provider: this.name, model: this.model, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
+      usage: { provider: this.name, model, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
     };
   }
 
   async parseCv(text: string) {
     const { data, usage } = await this.call(
+      "extract",
       LlmCv,
       "You extract the structure of a resume. Copy text verbatim from the resume; do not rephrase, translate, summarise or add anything. Use empty strings or empty lists for anything not present. Keep the original order. Dates exactly as written.",
       wrapUntrusted("cv", text, this.maxChars),
@@ -112,6 +125,7 @@ export class AnthropicProvider implements AiProvider {
 
   async extractRequirements(jobText: string) {
     const { data, usage } = await this.call(
+      "extract",
       LlmRequirements,
       "You extract the candidate requirements from a job advert. One requirement per distinct skill, technology, language, education or experience demand. Ignore benefits, company description and salary. `sourceText` must be copied verbatim from the advert. importance is 'nice' for desirable/bonus/valued items, otherwise 'must'. minLevel is a CEFR level or level word for spoken languages, else null.",
       wrapUntrusted("job", jobText, this.maxChars),
@@ -151,6 +165,7 @@ export class AnthropicProvider implements AiProvider {
       .map((e, i) => `Experience ${i}: ${e.title} — ${e.company}\n${e.bullets.map((b, j) => `  bullet ${j}: ${b}`).join("\n")}`)
       .join("\n");
     const { data, usage } = await this.call(
+      "write",
       LlmRewrites,
       `You improve a resume for a specific job, writing in ${LANG_NAME[input.language]}. Rewrite the professional summary and the experience bullets for clarity, concision and the job's terminology. Rules: keep every fact exactly as in the resume; never add numbers, metrics, percentages, technologies, employers, titles or achievements that are not in the resume; only rewrite bullets where you add real clarity (omit others). Rationale: one short sentence in ${LANG_NAME[input.language]}.`,
       `${wrapUntrusted("cv", cvText, this.maxChars)}\n\nExperience bullets with indices:\n${wrapUntrusted("cv", experiences, this.maxChars)}\n\nJob requirements and whether the resume shows them:\n${wrapUntrusted("job", reqList, 8000)}`,
@@ -174,6 +189,7 @@ export class AnthropicProvider implements AiProvider {
       .map((r) => r.label)
       .join(", ");
     const { data, usage } = await this.call(
+      "write",
       LlmLetter,
       `Write a concise cover letter (max 300 words) in ${LANG_NAME[input.language]} for the job below, using only facts from the resume. Never invent experience, numbers, results or technologies. Do not claim requirements the resume does not show. Sign with the candidate's name from the resume.`,
       `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\nJob title: ${input.job.title}\nCompany: ${input.job.company}\nRequirements the resume shows: ${found || "none identified"}`,
@@ -186,6 +202,7 @@ export class AnthropicProvider implements AiProvider {
       .map((r) => `- ${r.label} (${input.results.find((x) => x.requirementId === r.id)?.status ?? "unknown"})`)
       .join("\n");
     const { data, usage } = await this.call(
+      "write",
       LlmInterview,
       `Prepare up to 10 likely interview questions for this job in ${LANG_NAME[input.language]}. For each, quote verbatim resume lines as evidence (empty list if none) and give an honest preparation tip. Never suggest claiming experience the resume does not show.`,
       `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\nJob: ${input.job.title} — ${input.job.company}\nRequirements and status:\n${wrapUntrusted("job", reqs, 8000)}`,

@@ -1,24 +1,26 @@
-import { CircleAlert } from "lucide-react";
 import type { LegalSection, MarketingDict } from "@/lib/i18n/marketing";
 import { LEGAL_LAST_UPDATED } from "@/lib/i18n/marketing";
+import { fillLegal, legalOperator } from "@/lib/legal";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingHeader } from "./MarketingHeader";
 
-const PLACEHOLDER_EMAIL = "privacy@cvmatch.example";
-
-function Paragraph({ text, note }: { text: string; note: string }) {
-  if (!text.includes(PLACEHOLDER_EMAIL)) return <p>{text}</p>;
-  const [before, after] = text.split(PLACEHOLDER_EMAIL);
+/** Renders a paragraph with the operator's details filled in and the contact email as a mailto link. */
+function Paragraph({ text, email }: { text: string; email: string }) {
+  if (!email.includes("@") || !text.includes(email)) return <p>{text}</p>;
+  const [before, ...rest] = text.split(email);
   return (
     <p>
       {before}
-      <span className="font-medium text-ink">{PLACEHOLDER_EMAIL}</span> <span className="text-amber-700">{note}</span>
-      {after}
+      <a href={`mailto:${email}`} className="font-medium text-brand-700 underline">
+        {email}
+      </a>
+      {rest.join(email)}
     </p>
   );
 }
 
 export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; title: string; intro: string; sections: LegalSection[] }) {
+  const op = legalOperator();
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <MarketingHeader t={t} />
@@ -27,18 +29,14 @@ export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; tit
         <p className="mt-2 text-sm text-ink-muted">
           {t.legal.updated}: {LEGAL_LAST_UPDATED}
         </p>
-        <div className="mt-6 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
-          <CircleAlert aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>{t.legal.templateNote}</p>
-        </div>
-        <p className="mt-6 text-ink-soft">{intro}</p>
+        <p className="mt-6 text-ink-soft">{fillLegal(intro, op)}</p>
         <div className="mt-8 space-y-8">
           {sections.map((s) => (
             <section key={s.title}>
               <h2 className="text-lg font-semibold text-ink">{s.title}</h2>
               <div className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
                 {s.paragraphs.map((p) => (
-                  <Paragraph key={p} text={p} note={t.legal.contactPlaceholderNote} />
+                  <Paragraph key={p} text={fillLegal(p, op)} email={op.email} />
                 ))}
               </div>
             </section>

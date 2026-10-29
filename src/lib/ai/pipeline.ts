@@ -21,7 +21,7 @@ export function getProvider(): AiProvider {
   if (providerOverride) return providerOverride;
   const e = env();
   if (aiProvider(e) === "anthropic") {
-    return new AnthropicProvider(e.ANTHROPIC_API_KEY!, e.AI_MODEL, e.AI_MAX_INPUT_CHARS);
+    return new AnthropicProvider(e.ANTHROPIC_API_KEY!, { extract: e.AI_MODEL_EXTRACT, write: e.AI_MODEL_WRITE }, e.AI_MAX_INPUT_CHARS);
   }
   return heuristicProvider;
 }

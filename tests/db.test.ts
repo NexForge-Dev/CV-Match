@@ -140,7 +140,7 @@ describe("row level security isolates accounts", () => {
 
   it("anonymous users see only active plans", async () => {
     const plans = await as<{ id: string }>(null, "select id from public.plans order by sort");
-    expect(plans.map((p) => p.id)).toEqual(["free", "pack_5", "pro_monthly"]);
+    expect(plans.map((p) => p.id)).toEqual(["free", "pack_10", "pro_monthly", "pro_quarterly"]);
     expect(await as(null, "select * from public.resumes")).toHaveLength(0);
   });
 });
@@ -210,10 +210,76 @@ describe("billing integrity", () => {
     expect(balance).toBe(0);
   });
 
+  it("paid credits take the features of the active pack", async () => {
+    await as("service", `update public.plans set features = features || '{"cover_letter": false}' where id = 'pack_5'`);
+    const D = "44444444-4444-4444-4444-444444444444";
+    await db.exec(`insert into auth.users (id, email) values ('${D}', 'd@test.dev')`);
+    await as("service", `insert into public.credit_ledger (user_id, delta, credit_type, reason, external_ref) values ($1, 1, 'paid', 'pack_purchase', 'cs_test_d')`, [D]);
+    const [r] = await as<{ features: { cover_letter: boolean } }>("service", "select * from public.consume_analysis_credit($1)", [D]);
+    expect(r.features.cover_letter).toBe(true);
+  });
+
+  it("orphan analyses (function killed before refunding) get their credit back, once", async () => {
+    const E = "55555555-5555-5555-5555-555555555555";
+    await db.exec(`insert into auth.users (id, email) values ('${E}', 'e@test.dev')`); // 1 free credit
+    const [r] = await as<{ allowed: boolean; usage_event_id: number }>("service", "select * from public.consume_analysis_credit($1)", [E]);
+    expect(r.allowed).toBe(true);
+    // Too recent: still running.
+    expect((await as<{ n: number }>("service", "select public.reconcile_orphan_analyses() as n"))[0].n).toBe(0);
+    await as("service", `update public.usage_events set created_at = created_at - interval '1 hour' where id = $1`, [r.usage_event_id]);
+    await as("service", `update public.credit_ledger set created_at = created_at - interval '1 hour' where user_id = $1 and reason = 'analysis'`, [E]);
+    expect((await as<{ n: number }>("service", "select public.reconcile_orphan_analyses() as n"))[0].n).toBe(1);
+    expect((await as<{ n: number }>("service", "select public.reconcile_orphan_analyses() as n"))[0].n).toBe(0);
+    const [{ balance }] = await as<{ balance: number }>("service", "select coalesce(sum(delta),0)::int as balance from public.credit_ledger where user_id = $1", [E]);
+    expect(balance).toBe(1);
+    await expect(as(E, "select public.reconcile_orphan_analyses()")).rejects.toThrow(/permission denied/);
+  });
+
   it("deleting the auth user removes all their data", async () => {
     // In Supabase the Auth server performs this delete (auth.admin.deleteUser).
     await db.query("delete from auth.users where id = $1", [A]);
     const [{ count }] = await as<{ count: number }>("service", "select (select count(*) from public.resumes where user_id = $1) + (select count(*) from public.credit_ledger where user_id = $1) + (select count(*) from public.profiles where id = $1) as count", [A]);
     expect(Number(count)).toBe(0);
+  });
+});
+
+describe("AI usage reservation", () => {
+  const U = "66666666-6666-6666-6666-666666666666";
+  const reserve = (kind: string, analysis: string | null, perMinute: number, daily: number, perAnalysis: number | null) =>
+    as<{ id: number }>("service", "select public.reserve_usage($1, $2, $3, $4, $5, $6) as id", [U, kind, analysis, perMinute, daily, perAnalysis]);
+
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${U}', 'u@test.dev')`);
+  });
+
+  it("is server-only", async () => {
+    await expect(as(U, "select public.reserve_usage($1, 'parse_cv', null, 10, 10, null)", [U])).rejects.toThrow(/permission denied/);
+  });
+
+  it("enforces the per-minute cap by inserting the row under the lock", async () => {
+    await reserve("parse_cv", null, 2, 100, null);
+    await reserve("extract_requirements", null, 2, 100, null);
+    await expect(reserve("parse_cv", null, 2, 100, null)).rejects.toThrow(/rate_limited/);
+  });
+
+  it("enforces the daily cap", async () => {
+    await expect(reserve("parse_cv", null, 100, 2, null)).rejects.toThrow(/usage_limit/);
+  });
+
+  it("enforces the per-analysis cap for extras", async () => {
+    const analysis = "77777777-7777-7777-7777-777777777777";
+    await reserve("cover_letter", analysis, 100, 100, 1);
+    await expect(reserve("cover_letter", analysis, 100, 100, 1)).rejects.toThrow(/usage_limit/);
+    // A different extra on the same analysis has its own cap.
+    await reserve("interview_prep", analysis, 100, 100, 1);
+  });
+
+  it("parallel requests cannot exceed the cap", async () => {
+    const V = "88888888-8888-8888-8888-888888888888";
+    await db.exec(`insert into auth.users (id, email) values ('${V}', 'v@test.dev')`);
+    const results = await Promise.allSettled(
+      Array.from({ length: 8 }, () => as("service", "select public.reserve_usage($1, 'cover_letter', null, 3, 100, null)", [V])),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
   });
 });

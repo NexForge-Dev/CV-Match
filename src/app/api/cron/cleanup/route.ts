@@ -14,7 +14,8 @@ function authorized(header: string | null, secret: string | undefined) {
 }
 
 /**
- * Retention job: deletes stored original files older than DOCUMENT_RETENTION_DAYS.
+ * Retention job: deletes stored original files older than DOCUMENT_RETENTION_DAYS, and gives back
+ * credits of analyses that were cut off (function timeout) before storing a result or refunding.
  * Call daily (e.g. Vercel Cron) with header `Authorization: Bearer $CRON_SECRET`.
  */
 export async function GET(req: Request) {
@@ -22,6 +23,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const admin = createAdminClient();
+  const { data: reconciled, error: reconcileError } = await admin.rpc("reconcile_orphan_analyses");
+  if (reconcileError) log.warn("cron.reconcile_failed", {});
+
   const cutoff = new Date(Date.now() - env().DOCUMENT_RETENTION_DAYS * 86400_000).toISOString();
   const { data: docs, error } = await admin
     .from("documents")
@@ -45,6 +49,6 @@ export async function GET(req: Request) {
     await admin.from("documents").update({ storage_path: null, original_deleted_at: new Date().toISOString() }).eq("id", doc.id);
     removed++;
   }
-  log.info("cron.cleanup", { removed, skipped });
-  return NextResponse.json({ removed });
+  log.info("cron.cleanup", { removed, skipped, reconciled: reconciled ?? 0 });
+  return NextResponse.json({ removed, reconciled: reconciled ?? 0 });
 }

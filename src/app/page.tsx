@@ -14,9 +14,9 @@ const STEP_ICONS = [FileText, Search, ListChecks, PenLine, Download];
 
 function PlanCard({ plan, t, locale }: { plan: Plan; t: MarketingDict; locale: Locale }) {
   const p = t.pricing;
-  const highlighted = plan.kind === "pack";
+  const highlighted = plan.billing_interval === "quarter";
   const features: string[] = [
-    plan.kind === "subscription" ? p.analysesPerMonth(plan.analyses_included) : p.analyses(plan.analyses_included),
+    plan.kind === "subscription" ? (plan.billing_interval === "quarter" ? p.analysesPerQuarter : p.analysesPerMonth)(plan.analyses_included) : p.analyses(plan.analyses_included),
     plan.features.max_suggestions ? p.suggestionsLimited(plan.features.max_suggestions) : p.suggestionsFull,
   ];
   if (plan.features.cover_letter) features.push(p.coverLetter);
@@ -29,7 +29,7 @@ function PlanCard({ plan, t, locale }: { plan: Plan; t: MarketingDict; locale: L
       <h3 className="text-lg font-semibold text-ink">{plan.name}</h3>
       <p className="mt-3 flex items-baseline gap-1">
         <span className="text-3xl font-bold tracking-tight text-ink">{formatPrice(plan.price_cents, plan.currency, locale)}</span>
-        <span className="text-sm text-ink-muted">{plan.kind === "subscription" ? p.perMonth : plan.kind === "pack" ? p.oneTime : ""}</span>
+        <span className="text-sm text-ink-muted">{plan.kind === "subscription" ? (plan.billing_interval === "quarter" ? p.perQuarter : p.perMonth) : plan.kind === "pack" ? p.oneTime : ""}</span>
       </p>
       <ul className="mt-5 flex-1 space-y-2 text-sm text-ink-soft">
         {features.map((f) => (
@@ -147,7 +147,7 @@ export default async function LandingPage() {
               <h2 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{t.pricing.title}</h2>
               <p className="mt-2 text-ink-muted">{t.pricing.subtitle}</p>
             </div>
-            <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
+            <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-2 lg:grid-cols-4">
               {plans.map((plan) => (
                 <PlanCard key={plan.id} plan={plan} t={t} locale={locale} />
               ))}

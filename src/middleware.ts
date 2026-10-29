@@ -3,8 +3,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED = ["/dashboard", "/new", "/resumes", "/analyses", "/jobs", "/documents", "/profile", "/billing", "/account"];
 
-/** Refreshes the Supabase session cookie and guards app routes. */
+/** Rejects cross-site API writes, refreshes the Supabase session cookie and guards app routes. */
 export async function middleware(request: NextRequest) {
+  // CSRF defence in depth (cookies are SameSite=Lax): state-changing API calls must come from our own origin.
+  if (request.nextUrl.pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    const origin = request.headers.get("origin");
+    const fetchSite = request.headers.get("sec-fetch-site");
+    if ((origin && origin !== request.nextUrl.origin) || fetchSite === "cross-site") {
+      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    }
+  }
+
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

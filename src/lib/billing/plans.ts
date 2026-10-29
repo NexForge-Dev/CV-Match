@@ -15,7 +15,7 @@ export const planSchema = z.object({
   kind: z.enum(["free", "pack", "subscription"]),
   price_cents: z.number().int(),
   currency: z.string(),
-  billing_interval: z.enum(["month", "year"]).nullable(),
+  billing_interval: z.enum(["month", "quarter", "year"]).nullable(),
   analyses_included: z.number().int(),
   features: planFeaturesSchema,
   stripe_price_id: z.string().nullable().optional(),
@@ -30,9 +30,16 @@ export type Plan = z.infer<typeof planSchema>;
  */
 export const FALLBACK_PLANS: Plan[] = [
   { id: "free", name: "Free", kind: "free", price_cents: 0, currency: "eur", billing_interval: null, analyses_included: 1, features: { max_suggestions: 5, cover_letter: false, interview_prep: false, export_docx: true, export_pdf: true }, sort: 0 },
-  { id: "pack_5", name: "Analysis pack", kind: "pack", price_cents: 700, currency: "eur", billing_interval: null, analyses_included: 5, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 1 },
-  { id: "pro_monthly", name: "Pro", kind: "subscription", price_cents: 1200, currency: "eur", billing_interval: "month", analyses_included: 40, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 2 },
+  { id: "pack_10", name: "Analysis pack", kind: "pack", price_cents: 990, currency: "eur", billing_interval: null, analyses_included: 10, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 1 },
+  { id: "pro_monthly", name: "Pro", kind: "subscription", price_cents: 1490, currency: "eur", billing_interval: "month", analyses_included: 50, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 2 },
+  { id: "pro_quarterly", name: "Pro (3 months)", kind: "subscription", price_cents: 3490, currency: "eur", billing_interval: "quarter", analyses_included: 150, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 3 },
 ];
+
+/** Stripe has no "quarter" interval: it is billed as every 3 months. */
+export function stripeRecurring(interval: Plan["billing_interval"]): { interval: "month" | "year"; interval_count: number } {
+  if (interval === "quarter") return { interval: "month", interval_count: 3 };
+  return { interval: interval ?? "month", interval_count: 1 };
+}
 
 export function parsePlans(rows: unknown[]): Plan[] {
   return rows

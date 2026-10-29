@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HttpError, parseJson, withUser } from "@/lib/api";
 import { env } from "@/lib/env";
-import { parsePlans } from "@/lib/billing/plans";
+import { parsePlans, stripeRecurring } from "@/lib/billing/plans";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
 const schema = z.object({ planId: z.string().min(1).max(64) });
+const LIVE_STATUSES = ["active", "trialing", "past_due", "incomplete", "unpaid"];
 
 /**
  * Creates a Stripe Checkout session. Price and benefits come from the `plans`
@@ -27,7 +28,7 @@ export const POST = withUser(async (req, _ctx, { user }) => {
 
   if (plan.kind === "subscription") {
     const { data: sub } = await admin.from("subscriptions").select("status").eq("user_id", user.id).maybeSingle();
-    if (sub && ["active", "trialing", "past_due"].includes(sub.status)) throw new HttpError("conflict", "already_subscribed");
+    if (sub && LIVE_STATUSES.includes(sub.status)) throw new HttpError("conflict", "already_subscribed");
   }
 
   let { data: customer } = await admin.from("billing_customers").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
@@ -36,6 +37,13 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     await admin.from("billing_customers").upsert({ user_id: user.id, stripe_customer_id: created.id }, { onConflict: "user_id", ignoreDuplicates: true });
     const { data: stored } = await admin.from("billing_customers").select("stripe_customer_id").eq("user_id", user.id).single();
     customer = stored;
+  }
+
+  // The subscriptions row is written by the webhook, so a checkout finished seconds ago (another tab)
+  // may not be there yet: ask Stripe too, so nobody is billed for two subscriptions.
+  if (plan.kind === "subscription") {
+    const existing = await stripe.subscriptions.list({ customer: customer!.stripe_customer_id, status: "all", limit: 20 });
+    if (existing.data.some((s) => LIVE_STATUSES.includes(s.status))) throw new HttpError("conflict", "already_subscribed");
   }
 
   const metadata = { user_id: user.id, plan_id: plan.id };
@@ -47,7 +55,9 @@ export const POST = withUser(async (req, _ctx, { user }) => {
           currency: plan.currency,
           unit_amount: plan.price_cents,
           product_data: { name: `CV Match — ${plan.name}` },
-          ...(plan.kind === "subscription" ? { recurring: { interval: plan.billing_interval ?? "month" } } : {}),
+          // Prices are VAT-inclusive consumer prices (same as the prices created by `npm run stripe:sync`).
+          tax_behavior: "inclusive" as const,
+          ...(plan.kind === "subscription" ? { recurring: stripeRecurring(plan.billing_interval) } : {}),
         },
       };
 
@@ -59,6 +69,11 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     metadata,
     ...(plan.kind === "subscription" ? { subscription_data: { metadata } } : { payment_intent_data: { metadata } }),
     allow_promotion_codes: true,
+    // Stripe Tax computes the VAT included in the price from the customer's address. Requires Stripe Tax
+    // to be enabled with a registration in the dashboard; until then leave STRIPE_AUTOMATIC_TAX unset.
+    ...(env().STRIPE_AUTOMATIC_TAX === "true"
+      ? { automatic_tax: { enabled: true }, billing_address_collection: "required" as const, customer_update: { address: "auto" as const, name: "auto" as const } }
+      : {}),
     success_url: `${appUrl}/billing?status=success`,
     cancel_url: `${appUrl}/billing?status=canceled`,
   });

@@ -14,7 +14,8 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 
-for (const file of [process.env.ENV_FILE, ".env.local", ".env"].filter(Boolean)) {
+// ENV_FILE is exclusive, so production checks never pick up local values.
+for (const file of process.env.ENV_FILE ? [process.env.ENV_FILE] : [".env.local", ".env"]) {
   if (!existsSync(file)) continue;
   for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
     const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -43,6 +44,11 @@ else if (!appUrl.startsWith("https://")) fail("NEXT_PUBLIC_APP_URL must use http
 else ok("public https URL");
 if (!E.CRON_SECRET || E.CRON_SECRET.length < 16) fail("CRON_SECRET missing or too short (use: openssl rand -hex 32)");
 else ok("CRON_SECRET set");
+// Shown on /legal and /privacy (GDPR art. 13, LSSI-CE art. 10).
+const legalMissing = ["LEGAL_OPERATOR_NAME", "LEGAL_OPERATOR_TAX_ID", "LEGAL_OPERATOR_ADDRESS", "LEGAL_CONTACT_EMAIL"].filter((k) => !E[k]?.trim());
+if (legalMissing.length && !isLocal) fail(`legal pages incomplete — set ${legalMissing.join(", ")}`);
+else if (legalMissing.length) warn(`legal operator details not set (${legalMissing.join(", ")}) — required in production`);
+else ok("legal operator details set");
 
 // ---------- Supabase ----------
 console.log("\nSupabase");
@@ -57,8 +63,19 @@ if (!E.NEXT_PUBLIC_SUPABASE_URL || !E.NEXT_PUBLIC_SUPABASE_ANON_KEY || !E.SUPABA
     ok(`anon key works — active plans: ${plans.map((p) => `${p.id} (${(p.price_cents / 100).toFixed(2)} ${p.currency})`).join(", ")}`);
     const admin = createClient(E.NEXT_PUBLIC_SUPABASE_URL, E.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const { error: migErr } = await admin.from("usage_events").select("credit_source").limit(1);
-    if (migErr) fail(`latest migration not applied (run: npx supabase db push) — ${migErr.message}`);
+    // reconcile_orphan_analyses comes from the latest migration; with a 100-year window it changes nothing.
+    const { error: fnErr } = await admin.rpc("reconcile_orphan_analyses", { p_older_than: "100 years" });
+    if (migErr || fnErr) fail(`latest migration not applied (run: npx supabase db push) — ${(migErr ?? fnErr).message}`);
     else ok("service role key works; all migrations applied");
+    try {
+      const res = await fetch(`${E.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: E.NEXT_PUBLIC_SUPABASE_ANON_KEY } });
+      const settings = await res.json();
+      if (settings.mailer_autoconfirm && !isLocal) fail("Auth: email confirmation is OFF — enable \"Confirm email\" (free credits could be farmed)");
+      else if (settings.mailer_autoconfirm) warn("Auth: email confirmation is off (fine locally)");
+      else ok("Auth: email confirmation required");
+    } catch (err) {
+      warn(`could not read Auth settings — ${errMsg(err)}`);
+    }
     const { data: bucket } = await admin.storage.getBucket("cv-originals");
     if (bucket && bucket.public) fail("storage bucket cv-originals is PUBLIC — make it private");
     else if (bucket) ok("storage bucket cv-originals is private");
@@ -75,24 +92,24 @@ const aiMode = E.AI_PROVIDER || (E.ANTHROPIC_API_KEY ? "anthropic" : "heuristic"
 if (aiMode === "heuristic" || !E.ANTHROPIC_API_KEY) {
   warn("no ANTHROPIC_API_KEY (or AI_PROVIDER=heuristic): the free rule-based engine is used — the app works, without AI wording/translation");
 } else {
-  const model = E.AI_MODEL || "claude-opus-5-5";
-  try {
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey: E.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 60_000 });
-    // Same request options as src/lib/ai/anthropic.ts, so a 400 here means the app's calls would fail too.
-    const res = await client.beta.messages.create({
-      model,
-      max_tokens: 256,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low" },
-      messages: [{ role: "user", content: "Reply with the single word OK." }],
-    });
-    const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-    if (res.stop_reason === "refusal") fail(`model ${model} refused the test prompt`);
-    else ok(`key valid; ${res.model} answered "${text.slice(0, 20)}" (${res.usage.input_tokens}+${res.usage.output_tokens} tokens)`);
-  } catch (err) {
-    fail(`Anthropic request failed for model ${model} — ${errMsg(err)} (the app would silently fall back to the rule-based engine)`);
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  const client = new Anthropic({ apiKey: E.ANTHROPIC_API_KEY, maxRetries: 1, timeout: 60_000 });
+  for (const model of new Set([E.AI_MODEL_EXTRACT || "claude-haiku-5-5", E.AI_MODEL_WRITE || "claude-sonnet-5-5"])) {
+    try {
+      // Same request options as src/lib/ai/anthropic.ts, so a 400 here means the app's calls would fail too.
+      const res = await client.beta.messages.create({
+        model,
+        max_tokens: 256,
+        ...(model.includes("haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" }),
+        output_config: { effort: "low" },
+        messages: [{ role: "user", content: "Reply with the single word OK." }],
+      });
+      const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
+      if (res.stop_reason === "refusal") fail(`model ${model} refused the test prompt`);
+      else ok(`key valid; ${res.model} answered "${text.slice(0, 20)}" (${res.usage.input_tokens}+${res.usage.output_tokens} tokens)`);
+    } catch (err) {
+      fail(`Anthropic request failed for model ${model} — ${errMsg(err)} (the app would silently fall back to the rule-based engine)`);
+    }
   }
 }
 
@@ -114,6 +131,27 @@ if (!/^(sk|rk)_(test|live)_/.test(sk) || sk.includes("placeholder") || sk === "s
     const account = await stripe.accounts.retrieve();
     ok(`key valid — account ${account.id}${account.charges_enabled ? "" : " (charges NOT enabled yet: finish account activation)"}`);
     if (live && !account.charges_enabled) fail("live account cannot take payments yet — complete Stripe activation");
+    if (live && E.STRIPE_AUTOMATIC_TAX !== "true") warn("STRIPE_AUTOMATIC_TAX is off: no VAT is calculated on invoices — enable Stripe Tax before taking EU payments");
+
+    // Every synced price must exist in this mode and match the database price.
+    if (E.NEXT_PUBLIC_SUPABASE_URL && E.SUPABASE_SERVICE_ROLE_KEY) {
+      const admin = createClient(E.NEXT_PUBLIC_SUPABASE_URL, E.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+      const { data: paid } = await admin.from("plans").select("id, price_cents, currency, stripe_price_id").eq("active", true).neq("kind", "free");
+      for (const plan of paid ?? []) {
+        if (!plan.stripe_price_id) {
+          warn(`plan ${plan.id}: no stripe_price_id — checkout builds the price from the database (run npm run stripe:sync)`);
+          continue;
+        }
+        try {
+          const price = await stripe.prices.retrieve(plan.stripe_price_id);
+          if (price.livemode !== live) fail(`plan ${plan.id}: price ${price.id} is a ${price.livemode ? "LIVE" : "TEST"} price but the key is ${live ? "LIVE" : "TEST"} (run npm run stripe:sync with this key)`);
+          else if (!price.active || price.unit_amount !== plan.price_cents || price.currency !== plan.currency) fail(`plan ${plan.id}: Stripe price ${price.id} (${price.unit_amount} ${price.currency}, active=${price.active}) does not match the database (${plan.price_cents} ${plan.currency}) — run npm run stripe:sync`);
+          else ok(`plan ${plan.id}: Stripe price matches (${(plan.price_cents / 100).toFixed(2)} ${plan.currency})`);
+        } catch (err) {
+          fail(`plan ${plan.id}: price ${plan.stripe_price_id} not found with this key — ${errMsg(err)}`);
+        }
+      }
+    }
     if (!isLocal) {
       const needed = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"];
       const url = `${appUrl.replace(/\/$/, "")}/api/stripe/webhook`;

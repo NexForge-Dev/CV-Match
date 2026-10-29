@@ -7,10 +7,7 @@ import { AuthShell } from "./AuthShell";
 import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
-
-function safeNext(next: string | null) {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-}
+import { safeNextPath } from "@/lib/safeNext";
 
 export function LoginForm() {
   const { t } = useI18n();
@@ -32,7 +29,7 @@ export function LoginForm() {
       setError(/confirm/i.test(error.message) ? t.auth.emailNotConfirmed : t.auth.invalidCredentials);
       return;
     }
-    router.push(safeNext(params.get("next")));
+    router.push(safeNextPath(params.get("next"), "/dashboard"));
     router.refresh();
   }
 

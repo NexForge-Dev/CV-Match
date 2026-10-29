@@ -16,6 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: `CV Match — ${t.meta.tagline}`, template: "%s · CV Match" },
     description: t.meta.description,
     metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+    openGraph: { type: "website", siteName: "CV Match", title: `CV Match — ${t.meta.tagline}`, description: t.meta.description },
+    twitter: { card: "summary_large_image", title: `CV Match — ${t.meta.tagline}`, description: t.meta.description },
   };
 }
 

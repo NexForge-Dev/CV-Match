@@ -18,7 +18,9 @@ Any Node.js 20+ host that runs `next start` works as well.
 3. Authentication → URL configuration:
    - Site URL: `https://YOUR_DOMAIN`
    - Redirect URLs: `https://YOUR_DOMAIN/auth/callback`
-4. Authentication → Providers → Email: keep **Confirm email** enabled.
+4. Authentication → Providers → Email: keep **Confirm email** enabled and set the minimum password length to **8**
+   (the forms require 8). Every new account gets a free analysis, so also enable **CAPTCHA protection**
+   (Authentication → Attack protection, e.g. Cloudflare Turnstile) to stop scripted sign-ups.
    Configure a custom SMTP sender (Authentication → Emails → SMTP) before launch; the built-in sender is rate-limited.
 5. Copy from Project Settings → API: the project URL, the `anon` key and the `service_role` key.
 
@@ -43,12 +45,20 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
    | `STRIPE_WEBHOOK_SECRET` | from the Stripe webhook endpoint |
    | `CRON_SECRET` | random string (`openssl rand -hex 32`) |
    | `STORE_ORIGINAL_FILES` | `false` (recommended) |
+   | `STRIPE_AUTOMATIC_TAX` | `true` once Stripe Tax is enabled (see PAYMENTS.md) |
+   | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL` | the provider's legal name, NIF, postal address and contact email (shown on `/legal` and `/privacy`) |
+   | `LEGAL_BACKUP_RETENTION_DAYS` | days deleted data may remain in backups (Supabase Pro: `7`) |
 
 3. Deploy. `vercel.json` schedules `/api/cron/cleanup` daily; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically.
+   The cron also gives back credits of analyses whose function was killed before finishing (older than 15 minutes).
+   `NEXT_PUBLIC_*` values are baked in at build time: redeploy after changing them.
 4. Add your domain and update `NEXT_PUBLIC_APP_URL`, the Supabase Site URL/redirects and the Stripe webhook URL.
 
 ## 4. Monitoring, backups and recovery
 
+- **AI spend:** set a monthly spend limit in the Anthropic Console. Per user, the app caps AI calls per minute
+  (`AI_RATE_LIMIT_PER_MINUTE`, default 10) and per day (`AI_DAILY_LIMIT`, default 40); the caps are reserved atomically in
+  the database, so parallel requests cannot exceed them.
 - **Health check:** `GET /api/health` returns `{"ok": true, "database": true}` (HTTP 200) or 503. It exposes no
   versions, keys or user data — point your uptime monitor at it.
 - **Logs:** structured JSON with ids, codes, sizes and durations only (`src/lib/log.ts` redacts content).
@@ -79,11 +89,11 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 
 ## Optional: AI provider
 
-Setting `ANTHROPIC_API_KEY` switches to Claude (`AI_MODEL`, default `claude-opus-5-5`) for CV parsing,
-requirement extraction, suggestion wording, cover letters and interview prep.
+Setting `ANTHROPIC_API_KEY` switches to Claude: `AI_MODEL_EXTRACT` (default `claude-haiku-5-5`) for CV parsing and
+requirement extraction, `AI_MODEL_WRITE` (default `claude-sonnet-5-5`) for suggestion wording, cover letters and interview prep.
 Requirement matching and the score stay deterministic, and every model output passes the same
 grounding and fact checks as the rule-based engine. If the API fails, the app falls back to the rule-based engine.
-Each analysis costs a few cents of API usage; token counts are recorded in `usage_events` (no content).
+Each full analysis costs about €0.10 of API usage (see docs/PAYMENTS.md); token counts are recorded in `usage_events` (no content).
 
 ## Optional: OCR for scanned PDFs
 

@@ -56,11 +56,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {plans.map((plan) => {
           const f = plan.features;
           const features = [
-            plan.kind === "free" ? b.oneAnalysis : plan.kind === "subscription" ? b.analysesMonth(plan.analyses_included) : b.analyses(plan.analyses_included),
+            plan.kind === "free" ? b.oneAnalysis : plan.kind === "subscription" ? (plan.billing_interval === "quarter" ? b.analysesQuarter : b.analysesMonth)(plan.analyses_included) : b.analyses(plan.analyses_included),
             f.max_suggestions ? b.limitedSuggestions(f.max_suggestions) : b.unlimitedSuggestions,
             ...(f.cover_letter ? [b.coverLetter] : []),
             ...(f.interview_prep ? [b.interviewPrep] : []),
@@ -71,7 +71,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               <h2 className="font-semibold">{plan.name}</h2>
               <p className="mt-2 text-3xl font-bold">
                 {formatPrice(plan.price_cents, plan.currency, locale)}
-                {plan.kind === "subscription" && <span className="text-base font-normal text-ink-muted">{b.perMonth}</span>}
+                {plan.kind === "subscription" && <span className="text-base font-normal text-ink-muted">{plan.billing_interval === "quarter" ? b.perQuarter : b.perMonth}</span>}
               </p>
               <ul className="mt-4 flex-1 space-y-2 text-sm">
                 {features.map((x) => (
