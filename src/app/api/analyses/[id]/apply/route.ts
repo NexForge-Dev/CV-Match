@@ -4,6 +4,7 @@ import { HttpError, assertUuid, withUser } from "@/lib/api";
 import { ApplyError, SUGGESTION_KINDS, applySuggestions, type AppliedSuggestion } from "@/lib/analysis/suggestions";
 import { insertVersion, loadVersion } from "@/lib/server/resumes";
 import { cvDataSchema } from "@/lib/cv/schema";
+import { analytics } from "@/lib/analytics";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -69,5 +70,6 @@ export const POST = withUser<Ctx>(async (_req, { params }, { user, supabase }) =
   const confirmed = accepted.filter((s) => s.kind === "confirm" && s.confirmedByUser).map((s) => s.targetRef?.skill).filter(Boolean);
   const label = confirmed.length ? `confirmed_by_user: ${confirmed.join(", ")}`.slice(0, 200) : "";
   const version = await insertVersion(supabase, { resumeId: base.resumeId, userId: user.id, data: next, origin: "suggestions", analysisId: id, label });
+  analytics.feature(user.id, "versao_criada");
   return NextResponse.json({ versionId: version.id, versionNumber: version.version_number, resumeId: base.resumeId });
 });

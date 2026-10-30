@@ -6,6 +6,7 @@ import { renderCvDocx } from "@/lib/export/docx";
 import { TEMPLATES } from "@/lib/export/labels";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadVersion } from "@/lib/server/resumes";
+import { analytics } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -32,6 +33,7 @@ export const GET = withUser(async (req, _ctx, { user, supabase }) => {
 
   const bytes = q.format === "pdf" ? await renderCvPdf(version.cv, language, template) : await renderCvDocx(version.cv, language, template);
   await createAdminClient().from("exports").insert({ user_id: user.id, resume_version_id: version.id, format: q.format, template, language });
+  analytics.feature(user.id, q.format === "pdf" ? "exportacao_pdf" : "exportacao_docx");
 
   const name = fileName(version.cv.contact.fullName || version.resume.title, version.versionNumber, q.format);
   return new Response(Buffer.from(bytes), {

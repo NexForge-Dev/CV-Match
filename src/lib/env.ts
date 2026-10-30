@@ -39,6 +39,10 @@ const serverSchema = z.object({
   // "true" enables Stripe Tax on checkout (VAT computed from the customer's address).
   STRIPE_AUTOMATIC_TAX: z.enum(["true", "false"]).default("false"),
   CRON_SECRET: z.string().optional(),
+  // NexForge management panel (internal product metrics). All three unset = disabled.
+  NEXFORGE_ENDPOINT: z.string().url().optional(),
+  NEXFORGE_INGEST_KEY: z.string().optional(),
+  NEXFORGE_PSEUDONYM_SECRET: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverSchema>;

@@ -5,6 +5,8 @@ import { getStripe } from "@/lib/billing/stripe";
 import { handleStripeEvent } from "@/lib/billing/webhook";
 import { supabaseBillingStore } from "@/lib/billing/supabaseStore";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { billingAnalyticsEvents } from "@/lib/billing/analyticsEvents";
+import { track } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -26,8 +28,16 @@ export async function POST(req: Request) {
   }
 
   try {
-    const outcome = await handleStripeEvent(event, supabaseBillingStore(createAdminClient()), (id) => stripe.subscriptions.retrieve(id));
+    const store = supabaseBillingStore(createAdminClient());
+    const outcome = await handleStripeEvent(event, store, (id) => stripe.subscriptions.retrieve(id));
     log.info("stripe.webhook", { type: event.type, eventId: event.id, outcome });
+    if (outcome !== "duplicate") {
+      // NexForge panel metrics; never blocks or fails the webhook.
+      for (const ev of billingAnalyticsEvents(event)) {
+        const userId = ev.userId ?? (ev.customerId ? await store.userIdForCustomer(ev.customerId).catch(() => undefined) : undefined);
+        track(ev.event, userId, ev.properties, { once: event.id });
+      }
+    }
     return NextResponse.json({ received: true, outcome });
   } catch (err) {
     log.error("stripe.webhook_failed", { type: event.type, eventId: event.id, error: err instanceof Error ? err.message.slice(0, 80) : "unknown" });

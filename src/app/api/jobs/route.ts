@@ -5,6 +5,7 @@ import { cvLanguageSchema } from "@/lib/cv/schema";
 import { extractJobRequirements } from "@/lib/ai/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { completeUsage, reserveUsage } from "@/lib/server/usage";
+import { analytics } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -46,5 +47,7 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
     .select("id, requirements")
     .single();
   if (error) throw error;
+  analytics.feature(user.id, "vaga_adicionada");
+  analytics.step(user.id, "vaga_adicionada");
   return NextResponse.json({ jobId: data.id, requirements: data.requirements });
 });

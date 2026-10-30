@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { parsePlans, stripeRecurring } from "@/lib/billing/plans";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { track } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -78,5 +79,8 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     cancel_url: `${appUrl}/billing?status=canceled`,
   });
   if (!session.url) throw new HttpError("server_error");
+  const period = plan.kind === "pack" ? "one_off" : (plan.billing_interval ?? "month");
+  track("plan_selected", user.id, { plan: plan.id, billing_period: period });
+  track("checkout_started", user.id, { plan: plan.id, billing_period: period });
   return NextResponse.json({ url: session.url });
 });

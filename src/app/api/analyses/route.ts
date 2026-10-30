@@ -1,3 +1,4 @@
+import { analytics } from "@/lib/analytics";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HttpError, parseJson, uuidLike, withUser } from "@/lib/api";
@@ -112,6 +113,9 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
         .eq("id", credit.usage_event_id);
     }
     log.info("analysis.created", { userId: user.id, analysisId: analysis.id, tier: credit.tier, score: output.score.score });
+    analytics.feature(user.id, "analise_executada");
+    analytics.step(user.id, "primeira_analise");
+    analytics.onboardingCompleted(user.id);
     return NextResponse.json({ analysisId: analysis.id });
   } catch (err) {
     // Never charge for a failed analysis.

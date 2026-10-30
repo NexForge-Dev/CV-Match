@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { Alert, PageHeader } from "@/components/ui";
 import { CheckoutButton, PortalButton } from "@/components/app/BillingButtons";
+import { track } from "@/lib/analytics";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -15,7 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  const { supabase } = await requireUser("/billing");
+  const { user, supabase } = await requireUser("/billing");
+  track("plan_viewed", user.id);
   const { t, locale } = await getDictionary();
   const b = t.billing;
   const { status } = await searchParams;

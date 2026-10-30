@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { log } from "@/lib/log";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { analytics, track } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,7 @@ export const GET = withUser(async (_req, _ctx, { user, supabase }) => {
     const { data } = await supabase.from(table).select("*");
     out[table] = data ?? [];
   }
+  analytics.feature(user.id, "exportacao_dados");
   return new NextResponse(JSON.stringify(out, null, 2), {
     headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="cv-match-data.json"', "cache-control": "no-store" },
   });
@@ -37,6 +39,8 @@ export const DELETE = withUser(async (req, _ctx, { user, supabase }) => {
   const { data: files } = await admin.storage.from("cv-originals").list(user.id, { limit: 1000 });
   if (files?.length) await admin.storage.from("cv-originals").remove(files.map((f) => `${user.id}/${f.name}`));
 
+  // Queued before the user disappears; sent after the response.
+  track("account_deleted", user.id);
   const { error } = await admin.auth.admin.deleteUser(user.id);
   if (error) throw error;
   await supabase.auth.signOut();

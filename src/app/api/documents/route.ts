@@ -10,6 +10,7 @@ import { parseCv } from "@/lib/ai/pipeline";
 import { emptyCv } from "@/lib/cv/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { completeUsage, reserveUsage } from "@/lib/server/usage";
+import { analytics } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -92,6 +93,9 @@ export const POST = withUser(async (req, _ctx, { user }) => {
   if (error) throw error;
 
   log.info("documents.created", { userId: user.id, documentId: doc.id, status: extraction.status, kind: fileMeta.kind, provider });
+  analytics.feature(user.id, "cv_importado");
+  analytics.step(user.id, "cv_importado");
+  if (extraction.method === "ocr") analytics.feature(user.id, "ocr_usado");
   return NextResponse.json({
     documentId: doc.id,
     status: extraction.status,

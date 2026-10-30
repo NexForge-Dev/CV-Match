@@ -29,6 +29,7 @@ export function LoginForm() {
       setError(/confirm/i.test(error.message) ? t.auth.emailNotConfirmed : t.auth.invalidCredentials);
       return;
     }
+    void fetch("/api/analytics", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "session" }), keepalive: true }).catch(() => {});
     router.push(safeNextPath(params.get("next"), "/dashboard"));
     router.refresh();
   }

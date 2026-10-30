@@ -8,6 +8,7 @@ import { planFeaturesSchema } from "@/lib/billing/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadVersion } from "@/lib/server/resumes";
 import { completeUsage, reserveUsage } from "@/lib/server/usage";
+import { analytics } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -51,5 +52,6 @@ export const POST = withUser<Ctx>(async (req, { params }, { user, supabase }) =>
 
   const { error } = await admin.from("analysis_extras").upsert({ analysis_id: id, user_id: user.id, kind, content, created_at: new Date().toISOString() }, { onConflict: "analysis_id,kind" });
   if (error) throw error;
+  analytics.feature(user.id, kind === "cover_letter" ? "carta_apresentacao" : "preparacao_entrevista");
   return NextResponse.json({ kind, content });
 });

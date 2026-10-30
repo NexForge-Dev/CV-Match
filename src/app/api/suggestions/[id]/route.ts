@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HttpError, assertUuid, parseJson, withUser } from "@/lib/api";
+import { analytics } from "@/lib/analytics";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -11,7 +12,7 @@ const schema = z.object({
 });
 
 /** Users can change only the decision fields of their own suggestions (column grants + RLS). */
-export const PATCH = withUser<Ctx>(async (req, { params }, { supabase }) => {
+export const PATCH = withUser<Ctx>(async (req, { params }, { user, supabase }) => {
   const { id } = await params;
   assertUuid(id);
   const body = await parseJson(req, schema);
@@ -22,5 +23,6 @@ export const PATCH = withUser<Ctx>(async (req, { params }, { supabase }) => {
   const { data, error } = await supabase.from("suggestions").update(update).eq("id", id).select("id").maybeSingle();
   if (error) throw error;
   if (!data) throw new HttpError("not_found");
+  if (body.status === "accepted") analytics.feature(user.id, "sugestao_aceita");
   return NextResponse.json({ ok: true });
 });

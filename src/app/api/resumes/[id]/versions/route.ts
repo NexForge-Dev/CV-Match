@@ -3,6 +3,7 @@ import { z } from "zod";
 import { HttpError, assertUuid, parseJson, withUser } from "@/lib/api";
 import { cvDataSchema } from "@/lib/cv/schema";
 import { insertVersion } from "@/lib/server/resumes";
+import { analytics } from "@/lib/analytics";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -16,5 +17,6 @@ export const POST = withUser<Ctx>(async (req, { params }, { user, supabase }) =>
   const { data: resume } = await supabase.from("resumes").select("id").eq("id", id).maybeSingle();
   if (!resume) throw new HttpError("not_found");
   const version = await insertVersion(supabase, { resumeId: id, userId: user.id, data: body.cv, origin: "manual", label: body.label });
+  analytics.feature(user.id, "versao_criada");
   return NextResponse.json({ versionId: version.id, versionNumber: version.version_number });
 });

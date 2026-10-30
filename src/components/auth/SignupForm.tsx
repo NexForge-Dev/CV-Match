@@ -46,6 +46,10 @@ export function SignupForm() {
       setError(error.message.length < 160 ? error.message : t.errors.generic);
       return;
     }
+    if (data.user) {
+      // Internal product metrics (verified server-side); never blocks the signup.
+      void fetch("/api/analytics", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "signup", userId: data.user.id }), keepalive: true }).catch(() => {});
+    }
     if (data.session) {
       router.push(next);
       router.refresh();
