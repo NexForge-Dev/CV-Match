@@ -291,7 +291,8 @@ describe("advisor fixes (20261102000006_advisors.sql)", () => {
     const policies = await db.query<{ policyname: string; qual: string | null; with_check: string | null }>(
       "select policyname, qual, with_check from pg_policies where schemaname = 'public'",
     );
-    expect(policies.rows.length).toBe(23); // same set as before: policies are replaced, not added
+    // 23 policies as before (replaced, not added), minus documents_delete dropped by 20261103000008_audit.sql.
+    expect(policies.rows.length).toBe(22);
     for (const p of policies.rows) {
       const expr = `${p.qual ?? ""} ${p.with_check ?? ""}`;
       // Every auth.uid() call is wrapped in a scalar subquery: "( SELECT auth.uid() AS uid)".
@@ -315,5 +316,42 @@ describe("advisor fixes (20261102000006_advisors.sql)", () => {
   it("applies cleanly a second time (idempotent)", async () => {
     await expect(db.exec(readFileSync(ADVISORS, "utf8"))).resolves.toBeDefined();
     expect((await as(B, "select * from public.resumes where user_id <> $1", [B])).length).toBe(0);
+  });
+});
+
+describe("audit limits on user-writable columns (20261103000008_audit.sql)", () => {
+  const G = "77777777-7777-7777-7777-777777777777";
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${G}', 'g@test.dev')`);
+  });
+
+  it("a job link must be http(s) and requirements a bounded array", async () => {
+    const job = `insert into public.job_descriptions (user_id, raw_text, url, requirements) values ($1, repeat('job text ', 10), $2, $3::jsonb)`;
+    await expect(as(G, job, [G, "javascript:alert(1)", "[]"])).rejects.toThrow(/job_descriptions_url_http/);
+    await expect(as(G, job, [G, "https://jobs.example/1", '{"a":1}'])).rejects.toThrow(/job_descriptions_requirements_array/);
+    await expect(as(G, job, [G, "", JSON.stringify(Array.from({ length: 101 }, () => ({})))])).rejects.toThrow(/job_descriptions_requirements_array/);
+    await expect(as(G, job, [G, "https://jobs.example/1", "[]"])).resolves.toBeDefined();
+  });
+
+  it("CV versions must be objects and target locations bounded", async () => {
+    const [{ id: resume }] = await as<{ id: string }>(G, `insert into public.resumes (user_id, title) values ($1, 'G') returning id`, [G]);
+    await expect(
+      as(G, `insert into public.resume_versions (resume_id, user_id, version_number, origin, data) values ($1, $2, 1, 'manual', '[]')`, [resume, G]),
+    ).rejects.toThrow(/resume_versions_data_object/);
+    await expect(as(G, `update public.profiles set target_locations = array_fill('x'::text, array[21]) where id = $1`, [G])).rejects.toThrow(/profiles_target_locations_bounded/);
+  });
+
+  it("users cannot delete documents directly (the server removes the stored file first)", async () => {
+    const [{ id }] = await as<{ id: string }>(
+      "service",
+      `insert into public.documents (user_id, file_name, mime_type, kind, size_bytes, storage_path, extraction_status) values ($1, 'cv.pdf', 'application/pdf', 'pdf', 10, $2, 'ok') returning id`,
+      [G, `${G}/cv.pdf`],
+    );
+    await expect(as(G, "delete from public.documents where id = $1", [id])).rejects.toThrow(/permission denied/);
+    expect(await as(G, "select id from public.documents where id = $1", [id])).toHaveLength(1);
+  });
+
+  it("applies cleanly a second time (idempotent)", async () => {
+    await expect(db.exec(readFileSync(path.join(__dirname, "../supabase/migrations/20261103000008_audit.sql"), "utf8"))).resolves.toBeDefined();
   });
 });
