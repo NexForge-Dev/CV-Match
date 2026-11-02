@@ -9,13 +9,25 @@ import { analytics, track } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
-/** GET: export all of the user's data (data portability). */
+const EXPORT_TABLES = [
+  "profiles", "profile_skills", "resumes", "resume_versions", "job_descriptions", "analyses", "suggestions", "analysis_extras",
+  "documents", "exports", "credit_ledger", "subscriptions", "billing_customers", "usage_events",
+] as const;
+const PAGE = 1000;
+
+/** GET: export all of the user's data (data portability, LGPD art. 18 V). RLS limits every table to the user's own rows. */
 export const GET = withUser(async (_req, _ctx, { user, supabase }) => {
-  const tables = ["profiles", "profile_skills", "resumes", "resume_versions", "job_descriptions", "analyses", "suggestions", "analysis_extras", "documents", "exports", "credit_ledger", "subscriptions"] as const;
-  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email } };
-  for (const table of tables) {
-    const { data } = await supabase.from(table).select("*");
-    out[table] = data ?? [];
+  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at } };
+  for (const table of EXPORT_TABLES) {
+    // The Data API returns at most 1000 rows per request: page through every table.
+    const rows: unknown[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase.from(table).select("*").order(table === "subscriptions" || table === "billing_customers" ? "user_id" : "id").range(from, from + PAGE - 1);
+      if (error) throw error;
+      rows.push(...(data ?? []));
+      if (!data || data.length < PAGE) break;
+    }
+    out[table] = rows;
   }
   analytics.feature(user.id, "exportacao_dados");
   return new NextResponse(JSON.stringify(out, null, 2), {
@@ -34,6 +46,18 @@ export const DELETE = withUser(async (req, _ctx, { user, supabase }) => {
   if (sub?.stripe_subscription_id && !["canceled", "incomplete_expired"].includes(sub.status)) {
     if (!env().STRIPE_SECRET_KEY) throw new HttpError("not_configured", "stripe");
     await getStripe().subscriptions.cancel(sub.stripe_subscription_id);
+  }
+
+  // LGPD: the Stripe customer holds the e-mail address. Deleting it removes that personal data from
+  // Stripe (charges and invoices, the fiscal records, stay in Stripe and can still be refunded).
+  const { data: customer } = await admin.from("billing_customers").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
+  if (customer?.stripe_customer_id && env().STRIPE_SECRET_KEY) {
+    try {
+      await getStripe().customers.del(customer.stripe_customer_id);
+    } catch (err) {
+      // Already gone or created in the other mode: never block the account deletion on it.
+      log.warn("account.stripe_customer_delete_failed", { reason: (err as { code?: string }).code ?? "unknown" });
+    }
   }
 
   const { data: files } = await admin.storage.from("cv-originals").list(user.id, { limit: 1000 });
