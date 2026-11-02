@@ -90,7 +90,11 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     })
     .select("id")
     .single();
-  if (error) throw error;
+  if (error) {
+    // No row points at the stored original any more: remove it so it cannot linger outside retention.
+    if (storagePath) await admin.storage.from("cv-originals").remove([storagePath]);
+    throw error;
+  }
 
   log.info("documents.created", { userId: user.id, documentId: doc.id, status: extraction.status, kind: fileMeta.kind, provider });
   analytics.feature(user.id, "cv_importado");
