@@ -15,6 +15,16 @@ export const runtime = "nodejs";
 const schema = z.object({ planId: z.string().min(1).max(64), termsAccepted: z.unknown().optional() });
 const LIVE_STATUSES = ["active", "trialing", "past_due", "incomplete", "unpaid"];
 
+async function customerUsable(stripe: ReturnType<typeof getStripe>, id: string): Promise<boolean> {
+  try {
+    const c = await stripe.customers.retrieve(id);
+    return !("deleted" in c && c.deleted);
+  } catch (err) {
+    if ((err as { code?: string }).code === "resource_missing") return false;
+    throw err;
+  }
+}
+
 /**
  * Creates a Stripe Checkout session. Price and benefits come from the `plans`
  * table (server-side), so changing a price needs no code change and the
@@ -37,6 +47,11 @@ export const POST = withUser(async (req, _ctx, { user }) => {
   }
 
   let { data: customer } = await admin.from("billing_customers").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
+  // A stored customer can be unusable: deleted in Stripe, or created with the other mode's keys (test → live).
+  if (customer && !(await customerUsable(stripe, customer.stripe_customer_id))) {
+    await admin.from("billing_customers").delete().eq("user_id", user.id).eq("stripe_customer_id", customer.stripe_customer_id);
+    customer = null;
+  }
   if (!customer) {
     const created = await stripe.customers.create({ email: user.email ?? undefined, metadata: { user_id: user.id } });
     await admin.from("billing_customers").upsert({ user_id: user.id, stripe_customer_id: created.id }, { onConflict: "user_id", ignoreDuplicates: true });

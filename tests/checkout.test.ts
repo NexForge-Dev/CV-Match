@@ -20,6 +20,10 @@ vi.mock("@/lib/supabase/admin", () => ({
       q.select = () => q;
       q.eq = () => q;
       q.upsert = async () => ({ error: null });
+      q.delete = () => {
+        adminFrom(`${table}:delete`);
+        return q;
+      };
       q.maybeSingle = async () => ({ data: table === "billing_customers" ? { stripe_customer_id: "cus_1" } : null });
       q.single = q.maybeSingle;
       q.then = (resolve: (v: unknown) => unknown) => resolve({ data: rows });
@@ -28,9 +32,11 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
+const retrieveCustomer = vi.fn(async (id: string) => ({ id }) as Record<string, unknown>);
+const createCustomer = vi.fn(async () => ({ id: "cus_new" }));
 const createSession = vi.fn<(params: Record<string, unknown>) => Promise<{ url: string }>>(async () => ({ url: "https://checkout.stripe.com/c/pay/cs_test_1" }));
 vi.mock("@/lib/billing/stripe", () => ({
-  getStripe: () => ({ checkout: { sessions: { create: createSession } }, subscriptions: { list: async () => ({ data: [] }) }, customers: { create: async () => ({ id: "cus_1" }) } }),
+  getStripe: () => ({ checkout: { sessions: { create: createSession } }, subscriptions: { list: async () => ({ data: [] }) }, customers: { create: createCustomer, retrieve: retrieveCustomer } }),
 }));
 
 async function checkout(body: unknown) {
@@ -42,6 +48,26 @@ async function checkout(body: unknown) {
 beforeEach(() => {
   createSession.mockClear();
   adminFrom.mockClear();
+  createCustomer.mockClear();
+  retrieveCustomer.mockClear();
+});
+
+describe("checkout with a stored Stripe customer", () => {
+  it("reuses a customer that still exists", async () => {
+    expect((await checkout({ planId: "pack_10", termsAccepted: true })).status).toBe(200);
+    expect(createCustomer).not.toHaveBeenCalled();
+    expect(createSession.mock.calls[0][0]).toMatchObject({ customer: "cus_1" });
+  });
+
+  it("replaces a customer deleted in Stripe or created in the other mode (test vs live)", async () => {
+    retrieveCustomer.mockRejectedValueOnce(Object.assign(new Error("No such customer"), { code: "resource_missing" }));
+    expect((await checkout({ planId: "pack_10", termsAccepted: true })).status).toBe(200);
+    expect(adminFrom).toHaveBeenCalledWith("billing_customers:delete");
+    expect(createCustomer).toHaveBeenCalledOnce();
+    retrieveCustomer.mockResolvedValueOnce({ id: "cus_1", deleted: true });
+    expect((await checkout({ planId: "pack_10", termsAccepted: true })).status).toBe(200);
+    expect(createCustomer).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("checkout requires accepting the Terms and the 7-day refund policy", () => {
