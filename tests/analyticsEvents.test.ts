@@ -39,8 +39,57 @@ describe("billingAnalyticsEvents (NexForge panel)", () => {
         { status: "active", items: item("cvmatch_pro_monthly") },
       ),
     );
-    expect(out.map((e) => e.event)).toEqual(["plan_changed", "payment_failed"]);
+    // The decline itself is reported once, from invoice.payment_failed, not again from the past_due transition.
+    expect(out.map((e) => e.event)).toEqual(["plan_changed"]);
     expect(out[0].properties).toMatchObject({ from_plan: "pro_monthly", to_plan: "pro_quarterly", billing_period: "quarter" });
+  });
+
+  it("detects plan switches without lookup keys (synced product id or the stored price ids)", () => {
+    const byProduct = billingAnalyticsEvents(
+      ev(
+        "customer.subscription.updated",
+        { status: "active", customer: "cus_1", metadata: { user_id: "u1", plan_id: "pro_monthly" }, items: { data: [{ price: { id: "price_q", lookup_key: null, product: "cvmatch_pro_quarterly", unit_amount: 6990 } }] } },
+        { items: { data: [{ price: { id: "price_m", lookup_key: null, product: "cvmatch_pro_monthly" } }] } },
+      ),
+    );
+    expect(byProduct).toHaveLength(1);
+    expect(byProduct[0]).toMatchObject({ event: "plan_changed", properties: { from_plan: "pro_monthly", to_plan: "pro_quarterly", amount_cents: 6990 } });
+
+    const byPriceId = billingAnalyticsEvents(
+      ev(
+        "customer.subscription.updated",
+        { status: "active", customer: "cus_1", metadata: {}, items: { data: [{ price: { id: "price_q", lookup_key: null, product: "prod_x" } }] } },
+        { items: { data: [{ price: { id: "price_m", lookup_key: null, product: "prod_y" } }] } },
+      ),
+      { price_m: "pro_monthly", price_q: "pro_quarterly" },
+    );
+    expect(byPriceId.map((e) => e.properties)).toEqual([{ from_plan: "pro_monthly", to_plan: "pro_quarterly", billing_period: "quarter" }]);
+
+    // Another product's prices on the shared Stripe account are never mistaken for a CV Match plan.
+    const other = billingAnalyticsEvents(
+      ev(
+        "customer.subscription.updated",
+        { status: "active", customer: "cus_1", metadata: {}, items: { data: [{ price: { id: "p1", lookup_key: "automanager_pro", product: "prod_a" } }] } },
+        { items: { data: [{ price: { id: "p2", lookup_key: "automanager_basic", product: "prod_b" } }] } },
+      ),
+    );
+    expect(other).toEqual([]);
+  });
+
+  it("reports a declined invoice once per invoice, with its plan", () => {
+    const invoice = (attempt: number) => ({
+      id: "in_1",
+      customer: "cus_3",
+      attempt_count: attempt,
+      lines: { data: [{ pricing: { price_details: { price: "price_m", product: "cvmatch_pro_monthly" } } }] },
+    });
+    const first = billingAnalyticsEvents(ev("invoice.payment_failed", invoice(1)));
+    const retry = billingAnalyticsEvents(ev("invoice.payment_failed", invoice(2)));
+    expect(first).toEqual([{ event: "payment_failed", customerId: "cus_3", properties: { plan: "pro_monthly" }, onceKey: "payment_failed:in_1" }]);
+    // Same dedupe key for every retry of the invoice, so the panel counts one failure.
+    expect(retry[0].onceKey).toBe(first[0].onceKey);
+    const viaMetadata = billingAnalyticsEvents(ev("invoice.payment_failed", { id: "in_2", customer: "cus_3", lines: { data: [] }, parent: { subscription_details: { metadata: { plan_id: "pro_quarterly" } } } }));
+    expect(viaMetadata[0].properties).toEqual({ plan: "pro_quarterly" });
   });
 
   it("maps cancellations with the Stripe feedback reason", () => {

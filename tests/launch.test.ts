@@ -115,3 +115,19 @@ describe("stripe webhook: launch fixes", () => {
     expect(subs.get("user-1")).toBe("pro_quarterly");
   });
 });
+
+describe("stripe webhook: plan detection without a lookup key", () => {
+  it("a price that lost its lookup key is still recognised by its synced product", async () => {
+    const { store, subs } = memoryStore();
+    const sub = {
+      id: "sub_p",
+      customer: "cus_1",
+      status: "active",
+      cancel_at_period_end: false,
+      metadata: { user_id: "user-1", plan_id: "pro_monthly" },
+      items: { data: [{ current_period_start: 1, current_period_end: 2, price: { id: "price_old", lookup_key: null, product: "cvmatch_pro_quarterly" } }] },
+    } as unknown as Stripe.Subscription;
+    await handleStripeEvent(event("evt_p", "customer.subscription.updated", sub), store, async () => sub);
+    expect(subs.get("user-1")).toBe("pro_quarterly");
+  });
+});
