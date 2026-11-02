@@ -23,7 +23,11 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(versions[0].id);
   const selected = versions.find((v) => v.id === selectedId) ?? versions[0];
-  const [draft, setDraft] = useState<CvData>(selected.cv);
+  // The draft belongs to one version: switching versions (or a new latest version) shows that version,
+  // while a refresh that brings the same version back (e.g. after saving the settings) keeps unsaved edits.
+  const [draftState, setDraftState] = useState<{ versionId: string; cv: CvData }>({ versionId: selected.id, cv: selected.cv });
+  const draft = draftState.versionId === selected.id ? draftState.cv : selected.cv;
+  const setDraft = (cv: CvData) => setDraftState({ versionId: selected.id, cv });
   const [view, setView] = useState<"editor" | "preview" | "compare">("editor");
   const [compareId, setCompareId] = useState(versions[1]?.id ?? versions[0].id);
   const [label, setLabel] = useState("");
@@ -32,13 +36,11 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
-  // Reset the draft when switching versions or after a refresh brings a new version.
+  // A newly saved (or applied) version becomes the selected one; other refreshes keep the selection.
+  const latestId = versions[0].id;
   useEffect(() => {
-    setDraft(selected.cv);
-  }, [selected.id, selected.cv]);
-  useEffect(() => {
-    setSelectedId(versions[0].id);
-  }, [versions]);
+    setSelectedId(latestId);
+  }, [latestId]);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(selected.cv), [draft, selected.cv]);
   const compareTo = versions.find((v) => v.id === compareId) ?? versions[0];
