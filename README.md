@@ -117,6 +117,7 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase connection |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Optional Cloudflare Turnstile captcha on signup/login/password reset (deploy it before enabling CAPTCHA in Supabase) |
 | `ANTHROPIC_API_KEY`, `AI_MODEL_EXTRACT`, `AI_MODEL_WRITE`, `AI_PROVIDER` (optional: `heuristic` forces the free engine) | AI provider — Claude is used automatically when the key is set |
 | `UPLOAD_MAX_BYTES` | Upload limit (default 4 MB — Vercel rejects bodies over 4.5 MB) |
 | `STORE_ORIGINAL_FILES` | Keep original files in Storage (default `false`: parsed in memory and discarded) |

@@ -20,7 +20,9 @@ Any Node.js 20+ host that runs `next start` works as well.
    - Redirect URLs: `https://YOUR_DOMAIN/auth/callback`
 4. Authentication → Providers → Email: keep **Confirm email** enabled and set the minimum password length to **8**
    (the forms require 8). Every new account gets a free analysis, so also enable **CAPTCHA protection**
-   (Authentication → Attack protection, e.g. Cloudflare Turnstile) to stop scripted sign-ups.
+   (Authentication → Attack protection, Cloudflare Turnstile) to stop scripted sign-ups. Order matters: first
+   deploy with `NEXT_PUBLIC_TURNSTILE_SITE_KEY` set (the forms then send the token), then enable CAPTCHA in
+   Supabase with the Turnstile secret key — enabling it first makes every login and sign-up fail.
    Configure a custom SMTP sender (Authentication → Emails → SMTP) before launch; the built-in sender is rate-limited.
 5. Copy from Project Settings → API: the project URL, the `anon` key and the `service_role` key.
 
