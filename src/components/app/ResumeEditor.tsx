@@ -158,9 +158,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-4 flex gap-1 border-b border-slate-200" role="tablist">
+          <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
             {(["editor", "preview", "compare"] as const).map((v) => (
-              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`border-b-2 px-4 py-2 text-sm font-medium ${view === v ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}>
+              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${view === v ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}>
                 {v === "editor" ? r.editor : v === "preview" ? r.preview : <span className="inline-flex items-center gap-1"><GitCompare className="h-3.5 w-3.5" /> {r.compare}</span>}
               </button>
             ))}
@@ -197,6 +197,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
 
           {view === "compare" && (
             <div className="space-y-3">
+              {versions.length === 1 && <p className="text-sm text-ink-muted">{r.onlyOneVersion}</p>}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span>{r.compareWith}</span>
                 <select className="input w-auto" value={compareId} onChange={(e) => setCompareId(e.target.value)} aria-label={r.compareWith}>

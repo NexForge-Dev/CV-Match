@@ -206,7 +206,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           <div className="mb-3 flex flex-wrap gap-2">
             {(["all", "found", "partial", "not_found", "ambiguous"] as const).map((s) => (
               <button key={s} className={filter === s ? "btn-primary btn-sm" : "btn-secondary btn-sm"} onClick={() => setFilter(s)}>
-                {s === "all" ? a.requirements : a.status[s]}
+                {s === "all" ? `${t.common.all} (${analysis.requirements.length})` : a.status[s]}
               </button>
             ))}
           </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, FileUp, Loader2 } from "lucide-react";
 import { CvForm } from "@/components/cv/CvForm";
 import { Alert } from "@/components/ui";
@@ -46,6 +46,11 @@ export function NewAnalysisWizard({
   const [step, setStep] = useState(pre ? 2 : 0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
+  // Errors are shown above the steps: bring them into view (on phones the buttons are far below).
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [error]);
 
   // Step 0/1
   const fileRef = useRef<HTMLInputElement>(null);
@@ -158,8 +163,15 @@ export function NewAnalysisWizard({
   return (
     <div>
       {stepper}
-      {error && (
+      {available <= 0 && (
         <div className="mb-4">
+          <Alert tone="warn">
+            {w.noCredits} <Link href="/billing" className="link">{w.buy}</Link>
+          </Alert>
+        </div>
+      )}
+      {error && (
+        <div className="mb-4" ref={errorRef} role="alert">
           <Alert tone="error">
             {error}{" "}
             {error === t.errors.payment_required && (
@@ -208,9 +220,9 @@ export function NewAnalysisWizard({
                 <h3 className="text-sm font-semibold">{w.orExisting}</h3>
                 <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
                   {existing.map((r) => (
-                    <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                      <span className="truncate">{r.title} <span className="text-ink-muted">· v{r.versionNumber} · {r.language.toUpperCase()}</span></span>
-                      <button className="btn-secondary btn-sm shrink-0" onClick={() => chooseExisting(r)}>{w.useVersion}</button>
+                    <li key={r.id} className="flex flex-col gap-2 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <span className="min-w-0 truncate">{r.title} <span className="text-ink-muted">· v{r.versionNumber} · {r.language.toUpperCase()}</span></span>
+                      <button className="btn-secondary btn-sm shrink-0 self-start sm:self-auto" onClick={() => chooseExisting(r)}>{w.useVersion}</button>
                     </li>
                   ))}
                 </ul>
@@ -219,7 +231,7 @@ export function NewAnalysisWizard({
           </section>
           <section className="card p-6">
             <h2 className="text-lg font-semibold">{w.orPaste}</h2>
-            <textarea className="input mt-4 min-h-[280px] font-mono text-xs" placeholder={w.pastePlaceholder} value={pasted} onChange={(e) => setPasted(e.target.value)} maxLength={60000} />
+            <textarea className="input mt-4 min-h-[280px] font-mono text-xs" aria-label={w.orPaste} placeholder={w.pastePlaceholder} value={pasted} onChange={(e) => setPasted(e.target.value)} maxLength={60000} />
             <button className="btn-secondary mt-3" disabled={pasted.trim().length < 30 || busy !== null} onClick={usePasted}>
               {busy === "paste" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               {w.useText}
