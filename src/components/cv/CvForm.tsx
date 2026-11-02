@@ -20,9 +20,10 @@ function Field({ label, value, onChange, textarea = false, rows = 3, id }: { lab
     <div>
       <label className="label" htmlFor={id}>{label}</label>
       {textarea ? (
-        <textarea id={id} className="input" rows={rows} value={value} onChange={(e) => onChange(e.target.value)} />
+        // Same limits as cvDataSchema, so the browser stops typing instead of the save failing.
+        <textarea id={id} className="input" rows={rows} value={value} maxLength={4000} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} className="input" value={value} maxLength={300} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
   );

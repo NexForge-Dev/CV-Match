@@ -1,6 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Logo } from "@/components/ui";
 import { getDictionary } from "@/lib/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: t.status.notFoundTitle };
+}
 
 export default async function NotFound() {
   const { t } = await getDictionary();

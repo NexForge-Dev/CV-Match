@@ -23,7 +23,11 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(versions[0].id);
   const selected = versions.find((v) => v.id === selectedId) ?? versions[0];
-  const [draft, setDraft] = useState<CvData>(selected.cv);
+  // The draft belongs to one version: switching versions (or a new latest version) shows that version,
+  // while a refresh that brings the same version back (e.g. after saving the settings) keeps unsaved edits.
+  const [draftState, setDraftState] = useState<{ versionId: string; cv: CvData }>({ versionId: selected.id, cv: selected.cv });
+  const draft = draftState.versionId === selected.id ? draftState.cv : selected.cv;
+  const setDraft = (cv: CvData) => setDraftState({ versionId: selected.id, cv });
   const [view, setView] = useState<"editor" | "preview" | "compare">("editor");
   const [compareId, setCompareId] = useState(versions[1]?.id ?? versions[0].id);
   const [label, setLabel] = useState("");
@@ -32,13 +36,11 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
-  // Reset the draft when switching versions or after a refresh brings a new version.
+  // A newly saved (or applied) version becomes the selected one; other refreshes keep the selection.
+  const latestId = versions[0].id;
   useEffect(() => {
-    setDraft(selected.cv);
-  }, [selected.id, selected.cv]);
-  useEffect(() => {
-    setSelectedId(versions[0].id);
-  }, [versions]);
+    setSelectedId(latestId);
+  }, [latestId]);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(selected.cv), [draft, selected.cv]);
   const compareTo = versions.find((v) => v.id === compareId) ?? versions[0];
@@ -156,9 +158,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-4 flex gap-1 border-b border-slate-200" role="tablist">
+          <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
             {(["editor", "preview", "compare"] as const).map((v) => (
-              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`border-b-2 px-4 py-2 text-sm font-medium ${view === v ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}>
+              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${view === v ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}>
                 {v === "editor" ? r.editor : v === "preview" ? r.preview : <span className="inline-flex items-center gap-1"><GitCompare className="h-3.5 w-3.5" /> {r.compare}</span>}
               </button>
             ))}
@@ -195,6 +197,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
 
           {view === "compare" && (
             <div className="space-y-3">
+              {versions.length === 1 && <p className="text-sm text-ink-muted">{r.onlyOneVersion}</p>}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 <span>{r.compareWith}</span>
                 <select className="input w-auto" value={compareId} onChange={(e) => setCompareId(e.target.value)} aria-label={r.compareWith}>

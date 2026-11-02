@@ -68,6 +68,44 @@ export type Experience = z.infer<typeof experienceSchema>;
 export type Education = z.infer<typeof educationSchema>;
 export type Project = z.infer<typeof projectSchema>;
 
+const SHORT_MAX = 300;
+const LONG_MAX = 4000;
+const cut = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : v);
+const cutList = (v: unknown, items: number, chars: number) => (Array.isArray(v) ? v.slice(0, items).map((x) => cut(x, chars)) : v);
+const cutFields = (o: unknown, longKeys: string[] = []) =>
+  o && typeof o === "object" && !Array.isArray(o)
+    ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === "string" ? cut(v, longKeys.includes(k) ? LONG_MAX : SHORT_MAX) : v]))
+    : o;
+
+/**
+ * Trims extracted data (parsers, AI) to the schema limits before validation, so a long but real
+ * CV is shortened instead of being rejected as a whole. Never used for user-submitted data,
+ * which is validated strictly.
+ */
+export function clampCv(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const cv = raw as Record<string, unknown>;
+  const list = (v: unknown, max: number, map: (x: unknown) => unknown) => (Array.isArray(v) ? v.slice(0, max).map(map) : v);
+  const contact = cutFields(cv.contact) as Record<string, unknown> | undefined;
+  return {
+    ...cv,
+    contact: contact && typeof contact === "object" ? { ...contact, links: cutList(contact.links, 10, SHORT_MAX) } : contact,
+    summary: cut(cv.summary, LONG_MAX),
+    experiences: list(cv.experiences, 40, (e) => {
+      const x = cutFields(e) as Record<string, unknown>;
+      return x && typeof x === "object" ? { ...x, bullets: cutList(x.bullets, 30, LONG_MAX) } : x;
+    }),
+    education: list(cv.education, 20, (e) => cutFields(e, ["details"])),
+    skills: cutList(cv.skills, 150, SHORT_MAX),
+    projects: list(cv.projects, 30, (p) => {
+      const x = cutFields(p, ["description"]) as Record<string, unknown>;
+      return x && typeof x === "object" ? { ...x, technologies: cutList(x.technologies, 30, SHORT_MAX) } : x;
+    }),
+    languages: list(cv.languages, 15, (l) => cutFields(l)),
+    certifications: cutList(cv.certifications, 40, SHORT_MAX),
+  };
+}
+
 export function emptyCv(): CvData {
   return cvDataSchema.parse({});
 }

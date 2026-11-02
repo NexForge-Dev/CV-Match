@@ -26,13 +26,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const target = request.nextUrl.clone();
-  target.search = "";
-  if (ok) {
-    target.pathname = type === "recovery" ? "/reset-password" : next;
-  } else {
-    target.pathname = "/login";
-    target.searchParams.set("error", "link");
-  }
+  // `next` is a same-origin path (safeNextPath) that may carry its own query string, so resolve it as a URL
+  // instead of assigning it to pathname (which would encode "?" as %3F).
+  const target = new URL(ok ? (type === "recovery" ? "/reset-password" : next) : "/login", request.nextUrl.origin);
+  if (target.origin !== request.nextUrl.origin) target.href = new URL("/dashboard", request.nextUrl.origin).href;
+  if (!ok) target.searchParams.set("error", "link");
   return NextResponse.redirect(target);
 }

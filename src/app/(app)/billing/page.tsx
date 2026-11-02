@@ -21,13 +21,15 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   const { t, locale } = await getDictionary();
   const b = t.billing;
   const { status } = await searchParams;
-  const [plans, credits, ledger, customer] = await Promise.all([
+  const [plans, credits, ledger, customer, subscription] = await Promise.all([
     getPublicPlans(),
     getCreditSummary(supabase),
     supabase.from("credit_ledger").select("id, delta, credit_type, reason, created_at").order("created_at", { ascending: false }).limit(20),
     supabase.from("billing_customers").select("stripe_customer_id").maybeSingle(),
+    supabase.from("subscriptions").select("status, cancel_at_period_end").maybeSingle(),
   ]);
   const subscribed = hasActiveSubscription(credits);
+  const paymentIssue = ["past_due", "unpaid", "incomplete"].includes(subscription.data?.status ?? "");
   const stripeKey = env().STRIPE_SECRET_KEY ?? "";
 
   return (
@@ -37,6 +39,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       {status === "canceled" && <Alert tone="warn">{b.canceled}</Alert>}
       {stripeKey.startsWith("sk_test_") && <Alert tone="info">{b.testMode}</Alert>}
       {!stripeKey && <Alert tone="warn">{t.errors.not_configured} (Stripe)</Alert>}
+      {paymentIssue && <Alert tone="warn">{b.paymentIssue}</Alert>}
 
       <section className="card grid gap-4 p-6 sm:grid-cols-3">
         <div>
@@ -53,6 +56,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <>
               <p className="text-2xl font-bold">{Math.max((credits.period_included ?? 0) - (credits.period_used ?? 0), 0)} / {credits.period_included}</p>
               {credits.period_end && <p className="text-xs text-ink-muted">{b.periodEnds(formatDate(credits.period_end, locale))}</p>}
+              {subscription.data?.cancel_at_period_end && <p className="text-xs font-medium text-amber-800">{b.cancelAtEnd}</p>}
             </>
           ) : (
             <p className="text-2xl font-bold">—</p>

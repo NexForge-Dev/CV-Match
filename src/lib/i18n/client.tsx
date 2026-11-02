@@ -4,7 +4,7 @@ import { createContext, useContext } from "react";
 import type { Locale } from "./config";
 import { dictionaries, type Dictionary } from "./dictionaries";
 
-const I18nContext = createContext<{ locale: Locale; t: Dictionary }>({ locale: "en", t: dictionaries.en });
+const I18nContext = createContext<{ locale: Locale; t: Dictionary }>({ locale: "pt", t: dictionaries.pt });
 
 export function I18nProvider({ locale, children }: { locale: Locale; children: React.ReactNode }) {
   return <I18nContext.Provider value={{ locale, t: dictionaries[locale] }}>{children}</I18nContext.Provider>;

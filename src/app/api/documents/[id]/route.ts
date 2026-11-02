@@ -29,7 +29,8 @@ export const DELETE = withUser<Ctx>(async (req, { params }, { user, supabase }) 
       .eq("user_id", user.id);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from("documents").delete().eq("id", id);
+    // Users cannot DELETE documents through the Data API (the stored file would be orphaned): the server does it.
+    const { error } = await admin.from("documents").delete().eq("id", id).eq("user_id", user.id);
     if (error) throw error;
   }
   return NextResponse.json({ ok: true });

@@ -67,6 +67,7 @@ function memoryStore() {
     async revokePaidCredits(_userId, amount, ref) {
       ledger.set(ref, -amount);
     },
+    revokedFor: async (_userId, key) => [...ledger.entries()].filter(([ref]) => ref === key || ref.startsWith(`${key}:`)).reduce((sum, [, n]) => sum - n, 0),
     async upsertSubscription(s) {
       subs.set(s.userId, s.planId);
     },

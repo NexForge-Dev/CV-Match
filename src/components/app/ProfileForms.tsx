@@ -56,7 +56,7 @@ export function ProfileForm({ initial }: { initial: ProfileData }) {
         </div>
         <div>
           <label className="label" htmlFor="p-targets">{p.targetLocations}</label>
-          <input id="p-targets" className="input" value={targets} onChange={(e) => setTargets(e.target.value)} placeholder="Madrid, Barcelona, Remote" />
+          <input id="p-targets" className="input" value={targets} onChange={(e) => setTargets(e.target.value)} placeholder="São Paulo, Rio de Janeiro, Remoto" />
         </div>
         <div>
           <label className="label" htmlFor="p-ui">{p.uiLanguage}</label>

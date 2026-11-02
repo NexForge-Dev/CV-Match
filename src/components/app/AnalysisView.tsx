@@ -206,7 +206,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           <div className="mb-3 flex flex-wrap gap-2">
             {(["all", "found", "partial", "not_found", "ambiguous"] as const).map((s) => (
               <button key={s} className={filter === s ? "btn-primary btn-sm" : "btn-secondary btn-sm"} onClick={() => setFilter(s)}>
-                {s === "all" ? a.requirements : a.status[s]}
+                {s === "all" ? `${t.common.all} (${analysis.requirements.length})` : a.status[s]}
               </button>
             ))}
           </div>
@@ -303,9 +303,14 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                 <button
                   className="btn-secondary btn-sm"
                   onClick={async () => {
-                    await navigator.clipboard.writeText(letter);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
+                    try {
+                      await navigator.clipboard.writeText(letter);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    } catch {
+                      // Clipboard blocked (permissions / insecure context): the text stays selectable in the box.
+                      setError(t.errors.generic);
+                    }
                   }}
                 >
                   <Copy className="h-3.5 w-3.5" /> {copied ? a.copied : a.copy}
@@ -428,7 +433,7 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{a.suggested}</p>
             {editing ? (
               <div className="mt-1 space-y-2">
-                <textarea className="input sm:text-sm" rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={6000} />
+                <textarea className="input sm:text-sm" rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000} />
                 <div className="flex gap-2">
                   <button className="btn-primary btn-sm" onClick={() => { onPatch({ editedText: draft === s.suggested_text ? null : draft }); setEditing(false); }}>{t.common.save}</button>
                   <button className="btn-ghost btn-sm" onClick={() => { setDraft(finalText); setEditing(false); }}>{t.common.cancel}</button>

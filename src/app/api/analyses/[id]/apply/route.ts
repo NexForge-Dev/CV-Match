@@ -50,6 +50,8 @@ export const POST = withUser<Ctx>(async (_req, { params }, { user, supabase }) =
     next = applySuggestions(base.cv, accepted);
   } catch (err) {
     if (err instanceof ApplyError) throw new HttpError("invalid_input", err.code);
+    // The edited result no longer fits the CV schema (e.g. a summary over the length limit).
+    if (err instanceof z.ZodError) throw new HttpError("invalid_input", "cv_limits");
     throw err;
   }
   // Applying the same decisions twice (double click, retry) must not create duplicate versions.

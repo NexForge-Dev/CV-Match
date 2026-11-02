@@ -21,6 +21,8 @@ const schema = z.object({
   language: cvLanguageSchema,
 });
 
+const MAX_REQUIREMENTS = 60;
+
 type CreditRow = { allowed: boolean; tier: "free" | "full" | null; source: string; usage_event_id: number | null; ledger_id: number | null; features: unknown };
 
 /**
@@ -36,7 +38,8 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   const version = await loadVersion(supabase, body.resumeVersionId);
   const { data: job } = await supabase.from("job_descriptions").select("id, raw_text, requirements").eq("id", body.jobId).maybeSingle();
   if (!job) throw new HttpError("not_found");
-  const requirements = z.array(requirementSchema).parse(job.requirements ?? []);
+  // requirements is user-writable through the Data API: cap it like the job routes do.
+  const requirements = z.array(requirementSchema).parse(job.requirements ?? []).slice(0, MAX_REQUIREMENTS);
 
   // Matching is deterministic and cheap: refuse (without charging) a job whose
   // requirements cannot produce a meaningful index instead of showing a misleading score.
@@ -54,6 +57,7 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   if (!credit?.allowed) throw new HttpError("payment_required");
   const features = planFeaturesSchema.parse(credit.features ?? {});
 
+  let analysisId: string | null = null;
   try {
     const output = await analyze({
       cv: version.cv,
@@ -85,6 +89,7 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
       .select("id")
       .single();
     if (error) throw error;
+    analysisId = analysis.id;
 
     if (output.suggestions.length) {
       const { error: sErr } = await admin.from("suggestions").insert(
@@ -107,10 +112,12 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
 
     const usage = output.usage[0];
     if (credit.usage_event_id) {
-      await admin
+      // Linking the usage row is what tells the daily reconciliation job that this credit was used.
+      const { error: uErr } = await admin
         .from("usage_events")
         .update({ analysis_id: analysis.id, provider: usage?.provider ?? null, model: usage?.model ?? null, input_tokens: usage?.inputTokens ?? 0, output_tokens: usage?.outputTokens ?? 0 })
         .eq("id", credit.usage_event_id);
+      if (uErr) throw uErr;
     }
     log.info("analysis.created", { userId: user.id, analysisId: analysis.id, tier: credit.tier, score: output.score.score });
     analytics.feature(user.id, "analise_executada");
@@ -118,7 +125,8 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
     analytics.onboardingCompleted(user.id);
     return NextResponse.json({ analysisId: analysis.id });
   } catch (err) {
-    // Never charge for a failed analysis.
+    // Never charge for a failed analysis, and never keep a half-written one the user did not pay for.
+    if (analysisId) await admin.from("analyses").delete().eq("id", analysisId).eq("user_id", user.id);
     await admin.rpc("refund_analysis_credit", { p_user: user.id, p_usage_event_id: credit.usage_event_id, p_ledger_id: credit.ledger_id });
     throw err;
   }
