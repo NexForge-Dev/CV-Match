@@ -283,3 +283,37 @@ describe("AI usage reservation", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(3);
   });
 });
+
+describe("advisor fixes (20261102000006_advisors.sql)", () => {
+  const ADVISORS = path.join(__dirname, "../supabase/migrations/20261102000006_advisors.sql");
+
+  it("every public RLS policy evaluates auth.uid() once per statement (initplan)", async () => {
+    const policies = await db.query<{ policyname: string; qual: string | null; with_check: string | null }>(
+      "select policyname, qual, with_check from pg_policies where schemaname = 'public'",
+    );
+    expect(policies.rows.length).toBe(23); // same set as before: policies are replaced, not added
+    for (const p of policies.rows) {
+      const expr = `${p.qual ?? ""} ${p.with_check ?? ""}`;
+      // Every auth.uid() call is wrapped in a scalar subquery: "( SELECT auth.uid() AS uid)".
+      const bare = expr.replace(/\(\s*SELECT auth\.uid\(\)( AS uid)?\s*\)/gi, "");
+      expect(bare, p.policyname).not.toMatch(/auth\.uid\(\)/);
+    }
+  });
+
+  it("touch_updated_at has a fixed search_path and still stamps updated_at", async () => {
+    const [{ proconfig }] = (await db.query<{ proconfig: string[] | null }>("select proconfig from pg_proc where proname = 'touch_updated_at'")).rows;
+    expect(proconfig).toContain('search_path=""');
+    const F = "99999999-9999-9999-9999-999999999999";
+    await db.exec(`insert into auth.users (id, email) values ('${F}', 'f@test.dev')`);
+    await as("service", "update public.profiles set updated_at = now() - interval '1 day' where id = $1", [F]);
+    // The trigger runs as the updating user: the empty search_path must not break it.
+    await as(F, "update public.profiles set full_name = 'Fer' where id = $1", [F]);
+    const [p] = await as<{ fresh: boolean }>(F, "select updated_at > now() - interval '1 minute' as fresh from public.profiles where id = $1", [F]);
+    expect(p.fresh).toBe(true);
+  });
+
+  it("applies cleanly a second time (idempotent)", async () => {
+    await expect(db.exec(readFileSync(ADVISORS, "utf8"))).resolves.toBeDefined();
+    expect((await as(B, "select * from public.resumes where user_id <> $1", [B])).length).toBe(0);
+  });
+});
