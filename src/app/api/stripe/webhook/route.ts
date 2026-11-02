@@ -38,9 +38,15 @@ export async function POST(req: Request) {
     log.info("stripe.webhook", { type: event.type, eventId: event.id, outcome });
     if (outcome !== "duplicate") {
       // NexForge panel metrics; never blocks or fails the webhook.
-      for (const ev of billingAnalyticsEvents(event)) {
-        const userId = ev.userId ?? (ev.customerId ? await store.userIdForCustomer(ev.customerId).catch(() => undefined) : undefined);
-        track(ev.event, userId, ev.properties, { once: event.id });
+      try {
+        const { data: plans } = await createAdminClient().from("plans").select("id, stripe_price_id").not("stripe_price_id", "is", null);
+        const priceToPlan = Object.fromEntries((plans ?? []).map((p) => [p.stripe_price_id as string, p.id as string]));
+        for (const ev of billingAnalyticsEvents(event, priceToPlan)) {
+          const userId = ev.userId ?? (ev.customerId ? await store.userIdForCustomer(ev.customerId).catch(() => undefined) : undefined);
+          track(ev.event, userId, ev.properties, { once: ev.onceKey ?? event.id });
+        }
+      } catch (err) {
+        log.warn("stripe.webhook_metrics_failed", { reason: err instanceof Error ? err.message.slice(0, 60) : "unknown" });
       }
     }
     return NextResponse.json({ received: true, outcome });
