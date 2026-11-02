@@ -19,9 +19,15 @@ export function fromAcceptLanguage(header: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
+/**
+ * Dates are shown in Brazil's time zone (the market this app is sold in). A fixed zone also keeps
+ * server-rendered and hydrated client output identical (the server runs in UTC).
+ */
+export const DISPLAY_TIME_ZONE = "America/Sao_Paulo";
+
 export function formatDate(iso: string, locale: Locale) {
   const tag = locale === "pt" ? "pt-BR" : locale === "es" ? "es-419" : "en-US";
-  return new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "short", year: "numeric", timeZone: DISPLAY_TIME_ZONE });
 }
 
 export function formatPrice(cents: number, currency: string, locale: Locale) {

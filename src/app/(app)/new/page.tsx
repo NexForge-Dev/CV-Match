@@ -37,7 +37,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
       <NewAnalysisWizard
         existing={existing}
         savedJobs={(jobs.data ?? []) as SavedJob[]}
-        defaultLanguage={(profile.data?.cv_language as "pt" | "es" | "en") ?? "en"}
+        defaultLanguage={(profile.data?.cv_language as "pt" | "es" | "en") ?? "pt"}
         maxUploadMb={Math.round(env().UPLOAD_MAX_BYTES / 1024 / 1024)}
         available={analysesAvailable(credits)}
         preselectResumeId={preselect ?? null}

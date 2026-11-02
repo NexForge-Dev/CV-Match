@@ -22,7 +22,7 @@ export default async function ProfilePage() {
       <PageHeader title={t.profile.title} subtitle={t.profile.subtitle} />
       <ProfileForm
         initial={
-          (profile as ProfileData | null) ?? { full_name: "", headline: "", location: "", target_locations: [], ui_locale: "en", cv_language: "en", cv_template: "modern" }
+          (profile as ProfileData | null) ?? { full_name: "", headline: "", location: "", target_locations: [], ui_locale: "pt", cv_language: "pt", cv_template: "modern" }
         }
       />
       <SkillBank initial={skills ?? []} />
