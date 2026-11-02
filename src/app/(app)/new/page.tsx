@@ -39,6 +39,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
         savedJobs={(jobs.data ?? []) as SavedJob[]}
         defaultLanguage={(profile.data?.cv_language as "pt" | "es" | "en") ?? "pt"}
         maxUploadMb={Math.round(env().UPLOAD_MAX_BYTES / 1024 / 1024)}
+        maxUploadBytes={env().UPLOAD_MAX_BYTES}
         available={analysesAvailable(credits)}
         preselectResumeId={preselect ?? null}
         aiEnabled={aiProvider() === "anthropic"}

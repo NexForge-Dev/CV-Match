@@ -22,6 +22,7 @@ export function NewAnalysisWizard({
   savedJobs,
   defaultLanguage,
   maxUploadMb,
+  maxUploadBytes,
   available,
   preselectResumeId,
   aiEnabled = false,
@@ -30,6 +31,8 @@ export function NewAnalysisWizard({
   savedJobs: SavedJob[];
   defaultLanguage: CvLanguage;
   maxUploadMb: number;
+  /** Exact server limit; maxUploadMb is only the rounded figure shown to the user. */
+  maxUploadBytes?: number;
   available: number;
   preselectResumeId: string | null;
   /** False when only the rule-based engine is available (it cannot translate CV content). */
@@ -58,7 +61,9 @@ export function NewAnalysisWizard({
   const [chosenTitle, setChosenTitle] = useState(pre ? `${pre.title} · v${pre.versionNumber}` : "");
   const [jobMode, setJobMode] = useState<"new" | "saved">("new");
   const [savedJobId, setSavedJobId] = useState(savedJobs[0]?.id ?? "");
-  const [job, setJob] = useState({ title: "", company: "", location: "", language: "es" as CvLanguage, url: "", rawText: "" });
+  const [job, setJob] = useState({ title: "", company: "", location: "", language: defaultLanguage, url: "", rawText: "" });
+  // The job created by the last attempt: a retry (e.g. after buying credits) reuses it instead of saving a duplicate.
+  const [createdJob, setCreatedJob] = useState<{ key: string; id: string } | null>(null);
   const [outputLanguage, setOutputLanguage] = useState<CvLanguage>(pre ? (pre.language as CvLanguage) : defaultLanguage);
 
   function handleExtraction(data: Extraction) {
@@ -71,7 +76,7 @@ export function NewAnalysisWizard({
 
   async function upload(file: File) {
     setError(null);
-    if (file.size > maxUploadMb * 1024 * 1024) return setError(t.errors.upload_invalid);
+    if (file.size > (maxUploadBytes ?? maxUploadMb * 1024 * 1024)) return setError(t.errors.too_large);
     setBusy("upload");
     const form = new FormData();
     form.append("file", file);
@@ -118,14 +123,18 @@ export function NewAnalysisWizard({
     setBusy("analyze");
     let jobId = savedJobId;
     if (jobMode === "new") {
-      const created = await api<{ jobId: string }>("/api/jobs", { method: "POST", json: job });
-      if (!created.ok) {
-        setBusy(null);
-        return setError(errorMessage(t, created.error, created.detail));
+      const key = JSON.stringify(job);
+      if (createdJob?.key === key) {
+        jobId = createdJob.id;
+      } else {
+        const created = await api<{ jobId: string }>("/api/jobs", { method: "POST", json: job });
+        if (!created.ok) {
+          setBusy(null);
+          return setError(errorMessage(t, created.error, created.detail));
+        }
+        jobId = created.data.jobId;
+        setCreatedJob({ key, id: jobId });
       }
-      jobId = created.data.jobId;
-      setSavedJobId(jobId);
-      setJobMode("saved");
     }
     const res = await api<{ analysisId: string }>("/api/analyses", { method: "POST", json: { resumeVersionId: versionId, jobId, language: outputLanguage } });
     if (!res.ok) {
