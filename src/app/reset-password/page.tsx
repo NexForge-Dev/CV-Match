@@ -6,6 +6,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
+import { authErrorMessage } from "@/lib/authErrors";
 
 export default function ResetPasswordPage() {
   const { t } = useI18n();
@@ -19,9 +20,10 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     if (password.length < 8) return setError(t.auth.passwordHint);
     setLoading(true);
+    setError(null);
     const { error } = await createClient().auth.updateUser({ password });
     setLoading(false);
-    if (error) return setError(error.message.length < 160 ? error.message : t.errors.generic);
+    if (error) return setError(authErrorMessage(t, error));
     setDone(true);
     setTimeout(() => router.push("/dashboard"), 1200);
   }

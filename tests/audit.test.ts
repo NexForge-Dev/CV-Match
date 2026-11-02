@@ -87,3 +87,16 @@ describe("stripe webhook: refunds, disputes and deleted accounts", () => {
     expect(processed.has("e7")).toBe(true);
   });
 });
+
+describe("auth errors are shown translated, never as raw Supabase English", async () => {
+  const { authErrorMessage } = await import("@/lib/authErrors");
+  const { dictionaries } = await import("@/lib/i18n/dictionaries");
+  const t = dictionaries.pt;
+  it("maps the common signup and password errors", () => {
+    expect(authErrorMessage(t, { code: "user_already_exists", message: "User already registered" })).toBe(t.auth.alreadyRegistered);
+    expect(authErrorMessage(t, { code: "weak_password", message: "Password should be at least 8 characters" })).toBe(t.auth.weakPassword);
+    expect(authErrorMessage(t, { code: "over_email_send_rate_limit", message: "email rate limit exceeded" })).toBe(t.auth.tooManyAttempts);
+    expect(authErrorMessage(t, { message: "captcha protection: request disallowed" })).toBe(t.auth.captchaFailed);
+    expect(authErrorMessage(t, { message: "Database error saving new user" })).toBe(t.errors.generic);
+  });
+});
