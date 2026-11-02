@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { cvDataSchema, cvToPlainText, newId, type CvData } from "@/lib/cv/schema";
+import { clampCv, cvDataSchema, cvToPlainText, newId, type CvData } from "@/lib/cv/schema";
 import { requirementSchema, type Requirement } from "@/lib/analysis/requirements";
 import { generateHeuristicSuggestions, type SuggestionDraft } from "@/lib/analysis/suggestions";
 import { findSkills } from "@/lib/analysis/taxonomy";
@@ -104,7 +104,7 @@ export class AnthropicProvider implements AiProvider {
     );
     // Grounding: drop any item that cannot be found in the source text.
     const g = (s: string) => (s && isGrounded(s, text, 0.7) ? s : "");
-    const cv: CvData = cvDataSchema.parse({
+    const cv: CvData = cvDataSchema.parse(clampCv({
       contact: { fullName: g(data.fullName), headline: g(data.headline), email: g(data.email), phone: g(data.phone), location: g(data.location), links: data.links.filter((l) => isGrounded(l, text)) },
       summary: g(data.summary),
       experiences: data.experiences
@@ -119,7 +119,7 @@ export class AnthropicProvider implements AiProvider {
         .filter((p) => p.name || p.description),
       languages: data.languages.filter((l) => isGrounded(l.name, text)).map((l) => ({ name: l.name, level: g(l.level) })),
       certifications: data.certifications.filter((c) => isGrounded(c, text, 0.7)),
-    });
+    }));
     return { value: cv, usage };
   }
 
