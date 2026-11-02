@@ -48,3 +48,24 @@ export function parsePlans(rows: unknown[]): Plan[] {
     .map((r) => r.data!)
     .sort((a, b) => a.sort - b.sort);
 }
+
+/** The parts of a Stripe Price used to recognise a plan (expanded object or bare id). */
+export type StripePriceLike = string | { id?: string; lookup_key?: string | null; product?: string | { id: string } | null } | null | undefined;
+
+const PREFIX = "cvmatch_";
+
+/**
+ * Plan id of a Stripe price, without depending on the lookup key alone. `npm run stripe:sync` gives every price
+ * the lookup key `cvmatch_<plan>` on a product with id `cvmatch_<plan>`; a price that lost its lookup key (the key
+ * moves to the newest price when a price changes) is still recognised by its product, or by the price ids stored
+ * in the `plans` table (`priceToPlan`). `metadata.plan_id` is not trusted on its own: the Stripe account is shared
+ * with other products. Returns undefined for prices that are not CV Match's.
+ */
+export function planIdFromPrice(price: StripePriceLike, priceToPlan: Record<string, string> = {}): string | undefined {
+  if (!price) return undefined;
+  if (typeof price === "string") return priceToPlan[price];
+  if (price.lookup_key?.startsWith(PREFIX)) return price.lookup_key.slice(PREFIX.length);
+  const product = typeof price.product === "string" ? price.product : price.product?.id;
+  if (product?.startsWith(PREFIX)) return product.slice(PREFIX.length);
+  return price.id ? priceToPlan[price.id] : undefined;
+}

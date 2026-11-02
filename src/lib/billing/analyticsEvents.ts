@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { FALLBACK_PLANS } from "./plans";
+import { FALLBACK_PLANS, planIdFromPrice } from "./plans";
 
 /**
  * Maps a verified Stripe event to NexForge panel plan events. Pure (no I/O) so it is
@@ -13,12 +13,8 @@ export interface BillingAnalyticsEvent {
   userId?: string;
   customerId?: string;
   properties: Record<string, string | number>;
-}
-
-const LOOKUP_PREFIX = "cvmatch_";
-
-function planFromLookup(key: string | null | undefined): string | undefined {
-  return key?.startsWith(LOOKUP_PREFIX) ? key.slice(LOOKUP_PREFIX.length) : undefined;
+  /** Dedupe key for the panel (NexForge onceId); the webhook uses the Stripe event id when absent. */
+  onceKey?: string;
 }
 
 function periodOf(planId: string | undefined): string | undefined {
@@ -47,11 +43,28 @@ function compact(props: Record<string, string | number | undefined>): Record<str
   return Object.fromEntries(Object.entries(props).filter(([, v]) => v !== undefined && v !== "")) as Record<string, string | number>;
 }
 
-function subscriptionPlan(sub: Stripe.Subscription): string | undefined {
-  return planFromLookup(sub.items?.data?.[0]?.price?.lookup_key) ?? sub.metadata?.plan_id;
+function subscriptionPlan(sub: Pick<Stripe.Subscription, "items" | "metadata">, priceToPlan: Record<string, string>): string | undefined {
+  return planIdFromPrice(sub.items?.data?.[0]?.price, priceToPlan) ?? sub.metadata?.plan_id;
 }
 
-export function billingAnalyticsEvents(event: Stripe.Event): BillingAnalyticsEvent[] {
+/** Plan of an invoice line: its price (any API version shape), else the subscription metadata copied onto the invoice. */
+function invoicePlan(invoice: Stripe.Invoice, priceToPlan: Record<string, string>): string | undefined {
+  const line = invoice.lines?.data?.[0] as unknown as
+    | { price?: Parameters<typeof planIdFromPrice>[0]; pricing?: { price_details?: { price?: string; product?: string } } }
+    | undefined;
+  const details = line?.pricing?.price_details;
+  const fromLine =
+    planIdFromPrice(line?.price, priceToPlan) ??
+    (details?.price ? planIdFromPrice({ id: details.price, product: details.product }, priceToPlan) : undefined);
+  const parent = (invoice as unknown as { parent?: { subscription_details?: { metadata?: Record<string, string> | null } } }).parent;
+  return fromLine ?? parent?.subscription_details?.metadata?.plan_id ?? undefined;
+}
+
+/**
+ * @param priceToPlan Stripe price id -> plan id from the `plans` table, so plan switches are recognised even when a
+ *   price has no `cvmatch_` lookup key.
+ */
+export function billingAnalyticsEvents(event: Stripe.Event, priceToPlan: Record<string, string> = {}): BillingAnalyticsEvent[] {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded": {
@@ -79,18 +92,17 @@ export function billingAnalyticsEvents(event: Stripe.Event): BillingAnalyticsEve
       const prev = (event.data.previous_attributes ?? {}) as Partial<Stripe.Subscription>;
       const base = { userId: sub.metadata?.user_id || undefined, customerId: customerIdOf(sub.customer) };
       const out: BillingAnalyticsEvent[] = [];
-      const plan = subscriptionPlan(sub);
-      const fromPlan = planFromLookup(prev.items?.data?.[0]?.price?.lookup_key);
-      if (prev.items && fromPlan && plan && fromPlan !== plan) {
+      const plan = subscriptionPlan(sub, priceToPlan);
+      // The previous price is recognised the same way as the current one (lookup key, product or stored price id).
+      const fromPlan = prev.items ? planIdFromPrice(prev.items.data?.[0]?.price, priceToPlan) : undefined;
+      if (fromPlan && plan && fromPlan !== plan) {
         out.push({
           ...base,
           event: "plan_changed",
           properties: compact({ from_plan: fromPlan, to_plan: plan, billing_period: periodOf(plan), amount_cents: sub.items.data[0]?.price?.unit_amount ?? undefined }),
         });
       }
-      if (prev.status && prev.status !== "past_due" && sub.status === "past_due") {
-        out.push({ ...base, event: "payment_failed", properties: compact({ plan }) });
-      }
+      // A declined renewal is reported once, from invoice.payment_failed (the past_due transition is the same failure).
       return out;
     }
     case "customer.subscription.deleted": {
@@ -102,13 +114,21 @@ export function billingAnalyticsEvents(event: Stripe.Event): BillingAnalyticsEve
           event: "plan_canceled",
           userId: sub.metadata?.user_id || undefined,
           customerId: customerIdOf(sub.customer),
-          properties: compact({ plan: subscriptionPlan(sub), reason }),
+          properties: compact({ plan: subscriptionPlan(sub, priceToPlan), reason }),
         },
       ];
     }
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      return [{ event: "payment_failed", customerId: customerIdOf(invoice.customer), properties: {} }];
+      // Stripe retries a failed invoice several times, each with its own event: one failure per invoice.
+      return [
+        {
+          event: "payment_failed",
+          customerId: customerIdOf(invoice.customer),
+          properties: compact({ plan: invoicePlan(invoice, priceToPlan) }),
+          onceKey: invoice.id ? `payment_failed:${invoice.id}` : undefined,
+        },
+      ];
     }
     default:
       return [];

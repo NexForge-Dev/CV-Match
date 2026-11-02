@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { planIdFromPrice } from "./plans";
 
 /** Persistence used by the webhook handler. Implemented with Supabase in production and in-memory in tests. */
 export interface BillingStore {
@@ -42,17 +43,14 @@ export class UnknownUserError extends Error {
 export type FetchSubscription = (id: string) => Promise<Stripe.Subscription>;
 export type FetchPaymentIntent = (id: string) => Promise<Stripe.PaymentIntent>;
 
-const PRICE_LOOKUP_PREFIX = "cvmatch_";
-
 /**
  * The plan a subscription is on right now. Prices synced by `npm run stripe:sync` carry the lookup key
  * `cvmatch_<plan id>`, which follows plan switches made in the customer portal; the checkout metadata
  * only says which plan the subscription started on.
  */
 function currentPlanId(sub: Stripe.Subscription): string | undefined {
-  const lookupKey = sub.items?.data?.[0]?.price?.lookup_key;
-  if (lookupKey?.startsWith(PRICE_LOOKUP_PREFIX)) return lookupKey.slice(PRICE_LOOKUP_PREFIX.length);
-  return sub.metadata?.plan_id;
+  // Lookup key `cvmatch_<plan>`, else the synced product `cvmatch_<plan>` (a price can lose its lookup key).
+  return planIdFromPrice(sub.items?.data?.[0]?.price) ?? sub.metadata?.plan_id;
 }
 
 const iso = (unix: number | null | undefined) => (unix ? new Date(unix * 1000).toISOString() : null);
