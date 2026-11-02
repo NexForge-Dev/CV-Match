@@ -28,7 +28,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   }),
 }));
 
-const createSession = vi.fn(async (_params: Record<string, unknown>) => ({ url: "https://checkout.stripe.com/c/pay/cs_test_1" }));
+const createSession = vi.fn<(params: Record<string, unknown>) => Promise<{ url: string }>>(async () => ({ url: "https://checkout.stripe.com/c/pay/cs_test_1" }));
 vi.mock("@/lib/billing/stripe", () => ({
   getStripe: () => ({ checkout: { sessions: { create: createSession } }, subscriptions: { list: async () => ({ data: [] }) }, customers: { create: async () => ({ id: "cus_1" }) } }),
 }));
