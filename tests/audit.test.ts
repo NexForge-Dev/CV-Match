@@ -100,3 +100,30 @@ describe("auth errors are shown translated, never as raw Supabase English", asyn
     expect(authErrorMessage(t, { message: "Database error saving new user" })).toBe(t.errors.generic);
   });
 });
+
+describe("jobs without a title get one from the ad", async () => {
+  const { titleFromAd } = await import("@/lib/analysis/jobTitle");
+  it("uses the first non-empty line, without bullets, shortened", () => {
+    expect(titleFromAd("\n\n# Desenvolvedora Front-end Pleno\nRequisitos...")).toBe("Desenvolvedora Front-end Pleno");
+    expect(titleFromAd("x".repeat(300)).length).toBeLessThanOrEqual(120);
+  });
+});
+
+describe("server env treats empty variables as unset", async () => {
+  const { env, resetEnvCache } = await import("@/lib/env");
+  it("empty optional URL and enum settings do not break the configuration", () => {
+    const saved = { ...process.env };
+    Object.assign(process.env, { NEXFORGE_ENDPOINT: "", STRIPE_AUTOMATIC_TAX: "", OCR_HTTP_URL: "", STORE_ORIGINAL_FILES: "" });
+    resetEnvCache();
+    try {
+      expect(env().STRIPE_AUTOMATIC_TAX).toBe("false");
+      expect(env().NEXFORGE_ENDPOINT).toBeUndefined();
+    } finally {
+      for (const k of ["NEXFORGE_ENDPOINT", "STRIPE_AUTOMATIC_TAX", "OCR_HTTP_URL", "STORE_ORIGINAL_FILES"]) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+      resetEnvCache();
+    }
+  });
+});

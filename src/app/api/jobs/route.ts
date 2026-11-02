@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseJson, withUser } from "@/lib/api";
 import { cvLanguageSchema } from "@/lib/cv/schema";
 import { extractJobRequirements } from "@/lib/ai/pipeline";
+import { titleFromAd } from "@/lib/analysis/jobTitle";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { completeUsage, reserveUsage } from "@/lib/server/usage";
 import { analytics } from "@/lib/analytics";
@@ -36,7 +37,7 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
     .from("job_descriptions")
     .insert({
       user_id: user.id,
-      title: body.title,
+      title: body.title || titleFromAd(body.rawText),
       company: body.company,
       location: body.location,
       language: body.language,
