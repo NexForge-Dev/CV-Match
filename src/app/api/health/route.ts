@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isServerConfigValid, isSupabaseConfigured } from "@/lib/env";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
  * Liveness/readiness for uptime monitors. Public by design, so it reports only
- * booleans: no versions, keys, counts or user data.
+ * booleans: no versions, keys, counts or user data. `config` is false when the
+ * server env does not validate (routes using env() would fail with 500).
  */
 export async function GET() {
   let database = false;
@@ -20,5 +21,7 @@ export async function GET() {
       database = false;
     }
   }
-  return NextResponse.json({ ok: database, database }, { status: database ? 200 : 503, headers: { "cache-control": "no-store" } });
+  const config = isServerConfigValid();
+  const ok = database && config;
+  return NextResponse.json({ ok, database, config }, { status: ok ? 200 : 503, headers: { "cache-control": "no-store" } });
 }

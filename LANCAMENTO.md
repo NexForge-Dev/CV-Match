@@ -60,7 +60,7 @@ ENV_FILE=.env.production.local npm run verify:keys   # precisa terminar sem "blo
 
 ## 6. Smoke test manual após o deploy (10 min)
 
-- [ ] `https://SEU_DOMINIO/api/health` → `{"ok":true,"database":true}`
+- [ ] `https://SEU_DOMINIO/api/health` → `{"ok":true,"database":true,"config":true}` (`config:false` = variável de servidor inválida/vazia)
 - [ ] Landing, `/privacy`, `/terms`, `/legal` abrem e mostram seus dados legais (sem "—").
 - [ ] Criar conta com e-mail real → e-mail de confirmação chega → login funciona.
 - [ ] "Esqueci a senha" → e-mail chega → nova senha funciona.

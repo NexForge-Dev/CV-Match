@@ -73,6 +73,19 @@ export function aiProvider(e: ServerEnv = env()): "heuristic" | "anthropic" {
   return e.ANTHROPIC_API_KEY ? "anthropic" : "heuristic";
 }
 
+/**
+ * True when the server configuration parses and the keys every request needs are present.
+ * Used by /api/health so an invalid production env (e.g. an empty service role key) is not reported as healthy.
+ */
+export function isServerConfigValid(): boolean {
+  try {
+    const e = env();
+    return Boolean(e.NEXT_PUBLIC_SUPABASE_URL && e.NEXT_PUBLIC_SUPABASE_ANON_KEY && e.SUPABASE_SERVICE_ROLE_KEY);
+  } catch {
+    return false;
+  }
+}
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }

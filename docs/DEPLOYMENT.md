@@ -59,7 +59,7 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 - **AI spend:** set a monthly spend limit in the Anthropic Console. Per user, the app caps AI calls per minute
   (`AI_RATE_LIMIT_PER_MINUTE`, default 10) and per day (`AI_DAILY_LIMIT`, default 40); the caps are reserved atomically in
   the database, so parallel requests cannot exceed them.
-- **Health check:** `GET /api/health` returns `{"ok": true, "database": true}` (HTTP 200) or 503. It exposes no
+- **Health check:** `GET /api/health` returns `{"ok": true, "database": true, "config": true}` (HTTP 200) or 503 (`config: false` = the server env does not validate, e.g. an empty `SUPABASE_SERVICE_ROLE_KEY`). It exposes no
   versions, keys or user data — point your uptime monitor at it.
 - **Logs:** structured JSON with ids, codes, sizes and durations only (`src/lib/log.ts` redacts content).
 - **Backups:** Supabase takes daily backups on paid plans; enable **Point-in-Time Recovery** for production.
@@ -77,7 +77,7 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
 
 - [ ] `vercel env pull .env.production.local && ENV_FILE=.env.production.local npm run verify:keys` reports no blocking issues
       (keys valid, migrations applied, private bucket, Stripe mode and webhook endpoint, Claude reachable).
-- [ ] `GET https://YOUR_DOMAIN/api/health` returns `{"ok":true,"database":true}`.
+- [ ] `GET https://YOUR_DOMAIN/api/health` returns `{"ok":true,"database":true,"config":true}`.
 
 - [ ] Sign up with a new email, confirm it, log in.
 - [ ] Upload a PDF and a DOCX CV; paste a job; run the free analysis.
