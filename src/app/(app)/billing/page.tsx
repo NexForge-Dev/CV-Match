@@ -7,7 +7,7 @@ import { getPublicPlans } from "@/lib/billing/getPlans";
 import { env } from "@/lib/env";
 import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { Alert, PageHeader } from "@/components/ui";
-import { CheckoutButton, PortalButton } from "@/components/app/BillingButtons";
+import { CheckoutButton, PortalButton, WithdrawalConsentCheckbox, WithdrawalConsentProvider } from "@/components/app/BillingButtons";
 import { track } from "@/lib/analytics";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -61,37 +61,40 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {plans.map((plan) => {
-          const f = plan.features;
-          const features = [
-            plan.kind === "free" ? b.oneAnalysis : plan.kind === "subscription" ? (plan.billing_interval === "quarter" ? b.analysesQuarter : b.analysesMonth)(plan.analyses_included) : b.analyses(plan.analyses_included),
-            f.max_suggestions ? b.limitedSuggestions(f.max_suggestions) : b.unlimitedSuggestions,
-            ...(f.cover_letter ? [b.coverLetter] : []),
-            ...(f.interview_prep ? [b.interviewPrep] : []),
-            b.exports,
-          ];
-          return (
-            <div key={plan.id} className={`card flex flex-col p-6 ${plan.kind === "subscription" ? "border-brand-300 ring-1 ring-brand-200" : ""}`}>
-              <h2 className="font-semibold">{plan.name}</h2>
-              <p className="mt-2 text-3xl font-bold">
-                {formatPrice(plan.price_cents, plan.currency, locale)}
-                {plan.kind === "subscription" && <span className="text-base font-normal text-ink-muted">{plan.billing_interval === "quarter" ? b.perQuarter : b.perMonth}</span>}
-              </p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm">
-                {features.map((x) => (
-                  <li key={x} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {x}</li>
-                ))}
-              </ul>
-              {plan.kind !== "free" && (
-                <div className="mt-6">
-                  <CheckoutButton planId={plan.id} label={plan.kind === "subscription" ? b.subscribe : b.buy} disabled={!stripeKey || (plan.kind === "subscription" && subscribed)} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </section>
+      <WithdrawalConsentProvider>
+        <WithdrawalConsentCheckbox />
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {plans.map((plan) => {
+            const f = plan.features;
+            const features = [
+              plan.kind === "free" ? b.oneAnalysis : plan.kind === "subscription" ? (plan.billing_interval === "quarter" ? b.analysesQuarter : b.analysesMonth)(plan.analyses_included) : b.analyses(plan.analyses_included),
+              f.max_suggestions ? b.limitedSuggestions(f.max_suggestions) : b.unlimitedSuggestions,
+              ...(f.cover_letter ? [b.coverLetter] : []),
+              ...(f.interview_prep ? [b.interviewPrep] : []),
+              b.exports,
+            ];
+            return (
+              <div key={plan.id} className={`card flex flex-col p-6 ${plan.kind === "subscription" ? "border-brand-300 ring-1 ring-brand-200" : ""}`}>
+                <h2 className="font-semibold">{plan.name}</h2>
+                <p className="mt-2 text-3xl font-bold">
+                  {formatPrice(plan.price_cents, plan.currency, locale)}
+                  {plan.kind === "subscription" && <span className="text-base font-normal text-ink-muted">{plan.billing_interval === "quarter" ? b.perQuarter : b.perMonth}</span>}
+                </p>
+                <ul className="mt-4 flex-1 space-y-2 text-sm">
+                  {features.map((x) => (
+                    <li key={x} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {x}</li>
+                  ))}
+                </ul>
+                {plan.kind !== "free" && (
+                  <div className="mt-6">
+                    <CheckoutButton planId={plan.id} label={plan.kind === "subscription" ? b.subscribe : b.buy} disabled={!stripeKey || (plan.kind === "subscription" && subscribed)} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      </WithdrawalConsentProvider>
 
       {ledger.data && ledger.data.length > 0 && (
         <section className="card p-6">

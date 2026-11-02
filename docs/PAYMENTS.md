@@ -60,6 +60,20 @@ values ('pro_yearly', 'Pro (yearly)', 'subscription', 9900, 'eur', 'year', 500,
 - `features` keys: `max_suggestions` (number or null = unlimited), `cover_letter`, `interview_prep`, `export_pdf`, `export_docx`.
 - The free plan's `analyses_included` is the number of free credits granted on signup.
 
+## EU right of withdrawal (consent before checkout)
+
+Packs and subscriptions are digital content/services supplied right after payment. Under Directive 2011/83/EU
+art. 16(m) (Spain: TRLGDCU art. 103(m)) the buyer must expressly request immediate performance and acknowledge
+losing the 14-day withdrawal right **before** paying:
+
+- `/billing` shows a required checkbox (PT/ES/EN); every checkout button sends `withdrawalConsent: true`.
+- `POST /api/billing/checkout` answers `400 invalid_input / withdrawal_consent_required` without it, before any
+  database or Stripe call.
+- The consent is recorded in the Checkout Session metadata (and copied to the PaymentIntent / Subscription):
+  `withdrawal_waiver=accepted`, `withdrawal_waiver_at` (ISO time), `withdrawal_waiver_version`
+  (`src/lib/billing/consent.ts` — bump it when the wording changes).
+- Stripe Checkout restates it next to the pay button (`custom_text.submit`), and the Terms (section 4) explain it.
+
 ## How entitlements are enforced
 
 Nothing the browser sends decides what a user gets:

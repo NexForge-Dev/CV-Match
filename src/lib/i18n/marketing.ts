@@ -243,6 +243,7 @@ const en = {
         paragraphs: [
           "Payments are processed by Stripe. Analysis packs are one-time purchases of credits that are consumed when an analysis is run. A credit is returned automatically if an analysis fails for technical reasons.",
           "Pro subscriptions renew at the end of each billing period (monthly or every 3 months) until cancelled. You can cancel at any time from the billing page; access continues until the end of the paid period. Statutory consumer rights, including any applicable withdrawal rights, are not affected.",
+          "Right of withdrawal: packs and subscriptions give access to digital content and services that start as soon as payment is made. Before paying, you expressly request that access start immediately and acknowledge that, once it has started, you lose your 14-day right of withdrawal (art. 16(m) of Directive 2011/83/EU; art. 103(m) of the Spanish consumer law, TRLGDCU). A purchase cannot be made without this consent, which is recorded with the payment and restated on the Stripe payment page.",
           "Prices, limits and plan benefits may change; changes do not affect periods or credits already paid.",
         ],
       },
@@ -506,6 +507,7 @@ const pt: MarketingDict = {
         paragraphs: [
           "Os pagamentos são processados pela Stripe. Pacotes de análises são compras únicas de créditos, consumidos quando uma análise é executada. O crédito é devolvido automaticamente se uma análise falhar por motivo técnico.",
           "A assinatura Pro renova ao fim de cada período (mensal ou a cada 3 meses) até ser cancelada. Você pode cancelar a qualquer momento na página de cobrança; o acesso continua até o fim do período pago. Direitos legais do consumidor, incluindo eventual direito de arrependimento, não são afetados.",
+          "Direito de arrependimento (desistência): pacotes e assinaturas dão acesso a conteúdo e serviços digitais que começam assim que o pagamento é feito. Antes de pagar, você solicita expressamente o início imediato do acesso e reconhece que, uma vez iniciado, perde o direito de arrependimento de 14 dias (art. 16.º, alínea m), da Diretiva 2011/83/UE; art. 103.m da lei espanhola de defesa do consumidor, TRLGDCU). Não é possível comprar sem esse consentimento, que fica registrado com o pagamento e é repetido na página de pagamento da Stripe.",
           "Preços, limites e benefícios dos planos podem mudar; as mudanças não afetam períodos ou créditos já pagos.",
         ],
       },
@@ -767,6 +769,7 @@ const es: MarketingDict = {
         paragraphs: [
           "Los pagos los procesa Stripe. Los paquetes de análisis son compras únicas de créditos que se consumen al ejecutar un análisis. El crédito se devuelve automáticamente si un análisis falla por motivos técnicos.",
           "La suscripción Pro se renueva al final de cada periodo (mensual o cada 3 meses) hasta que la canceles. Puedes cancelarla en cualquier momento desde la página de facturación; el acceso continúa hasta el final del periodo pagado. Esto no afecta a tus derechos legales como consumidor, incluido el derecho de desistimiento cuando proceda.",
+          "Derecho de desistimiento: los paquetes y las suscripciones dan acceso a contenidos y servicios digitales que comienzan en cuanto se realiza el pago. Antes de pagar, solicitas expresamente que el acceso comience de inmediato y aceptas que, una vez iniciado, pierdes tu derecho de desistimiento de 14 días (art. 103.m del Real Decreto Legislativo 1/2007, TRLGDCU; art. 16.m de la Directiva 2011/83/UE). No es posible comprar sin este consentimiento, que queda registrado con el pago y se recuerda en la página de pago de Stripe.",
           "Los precios, límites y beneficios de los planes pueden cambiar; los cambios no afectan a periodos o créditos ya pagados.",
         ],
       },
@@ -794,4 +797,4 @@ const es: MarketingDict = {
 
 export const marketing: Record<"en" | "pt" | "es", MarketingDict> = { en, pt, es };
 
-export const LEGAL_LAST_UPDATED = "2026-10-29";
+export const LEGAL_LAST_UPDATED = "2026-11-02";

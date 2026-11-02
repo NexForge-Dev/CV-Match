@@ -3,13 +3,16 @@ import { z } from "zod";
 import { HttpError, parseJson, withUser } from "@/lib/api";
 import { env } from "@/lib/env";
 import { parsePlans, stripeRecurring } from "@/lib/billing/plans";
+import { withdrawalWaiverMetadata } from "@/lib/billing/consent";
+import { getDictionary } from "@/lib/i18n/server";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { track } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
-const schema = z.object({ planId: z.string().min(1).max(64) });
+// withdrawalConsent must be exactly `true`: the buyer ticked the EU withdrawal-right waiver (see lib/billing/consent).
+const schema = z.object({ planId: z.string().min(1).max(64), withdrawalConsent: z.unknown().optional() });
 const LIVE_STATUSES = ["active", "trialing", "past_due", "incomplete", "unpaid"];
 
 /**
@@ -18,7 +21,8 @@ const LIVE_STATUSES = ["active", "trialing", "past_due", "incomplete", "unpaid"]
  * browser cannot tamper with the amount.
  */
 export const POST = withUser(async (req, _ctx, { user }) => {
-  const { planId } = await parseJson(req, schema);
+  const { planId, withdrawalConsent } = await parseJson(req, schema);
+  if (withdrawalConsent !== true) throw new HttpError("invalid_input", "withdrawal_consent_required");
   const admin = createAdminClient();
   const { data: rows } = await admin.from("plans").select("*").eq("id", planId).eq("active", true);
   const plan = parsePlans(rows ?? [])[0];
@@ -47,7 +51,8 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     if (existing.data.some((s) => LIVE_STATUSES.includes(s.status))) throw new HttpError("conflict", "already_subscribed");
   }
 
-  const metadata = { user_id: user.id, plan_id: plan.id };
+  const metadata = { user_id: user.id, plan_id: plan.id, ...withdrawalWaiverMetadata() };
+  const { t } = await getDictionary();
   const lineItem = plan.stripe_price_id
     ? { price: plan.stripe_price_id, quantity: 1 }
     : {
@@ -70,6 +75,8 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     metadata,
     ...(plan.kind === "subscription" ? { subscription_data: { metadata } } : { payment_intent_data: { metadata } }),
     allow_promotion_codes: true,
+    // Restates the withdrawal-right waiver next to the pay button.
+    custom_text: { submit: { message: t.billing.withdrawalCheckoutNotice } },
     // Stripe Tax computes the VAT included in the price from the customer's address. Requires Stripe Tax
     // to be enabled with a registration in the dashboard; until then leave STRIPE_AUTOMATIC_TAX unset.
     ...(env().STRIPE_AUTOMATIC_TAX === "true"
