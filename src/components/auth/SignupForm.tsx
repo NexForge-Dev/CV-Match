@@ -8,6 +8,8 @@ import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
+import { isCaptchaError } from "@/lib/captcha";
+import { useCaptcha } from "./Captcha";
 
 export function SignupForm() {
   const { t } = useI18n();
@@ -20,6 +22,7 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const captcha = useCaptcha();
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   const plan = params.get("plan");
@@ -39,11 +42,13 @@ export function SignupForm() {
       options: {
         data: { full_name: fullName.trim() },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        ...captcha.options,
       },
     });
     setLoading(false);
     if (error) {
-      setError(error.message.length < 160 ? error.message : t.errors.generic);
+      captcha.reset();
+      setError(isCaptchaError(error) ? t.auth.captchaFailed : error.message.length < 160 ? error.message : t.errors.generic);
       return;
     }
     if (data.user) {
@@ -97,8 +102,9 @@ export function SignupForm() {
               <Link href="/privacy" className="link" target="_blank">{t.auth.privacy}</Link>
             </span>
           </label>
+          {captcha.widget}
           {error && <Alert tone="error">{error}</Alert>}
-          <button type="submit" className="btn-primary w-full" disabled={loading || !accepted || !configured}>
+          <button type="submit" className="btn-primary w-full" disabled={loading || !accepted || !configured || !captcha.ready}>
             {loading ? t.common.loading : t.auth.signup}
           </button>
         </form>

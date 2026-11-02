@@ -108,6 +108,8 @@ const en = {
     terms: "Terms of use",
     privacy: "Privacy policy",
     notConfigured: "Authentication is not configured. Set the Supabase variables in .env.local.",
+    captchaFailed: "The security check failed or expired. Please complete it again.",
+    captchaUnavailable: "The security check could not load. Disable content blockers for this site or try again later.",
   },
   dashboard: {
     title: "Dashboard",
@@ -479,6 +481,8 @@ const pt: Dictionary = {
     terms: "Termos de uso",
     privacy: "Política de privacidade",
     notConfigured: "A autenticação não está configurada. Defina as variáveis do Supabase no .env.local.",
+    captchaFailed: "A verificação de segurança falhou ou expirou. Complete-a novamente.",
+    captchaUnavailable: "Não foi possível carregar a verificação de segurança. Desative bloqueadores de conteúdo para este site ou tente mais tarde.",
   },
   dashboard: {
     title: "Painel",
@@ -848,6 +852,8 @@ const es: Dictionary = {
     terms: "Condiciones de uso",
     privacy: "Política de privacidad",
     notConfigured: "La autenticación no está configurada. Define las variables de Supabase en .env.local.",
+    captchaFailed: "La verificación de seguridad ha fallado o caducado. Complétala de nuevo.",
+    captchaUnavailable: "No se ha podido cargar la verificación de seguridad. Desactiva los bloqueadores de contenido para este sitio o inténtalo más tarde.",
   },
   dashboard: {
     title: "Panel",

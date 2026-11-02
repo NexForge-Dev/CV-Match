@@ -8,6 +8,8 @@ import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
+import { isCaptchaError } from "@/lib/captcha";
+import { useCaptcha } from "./Captcha";
 
 export function LoginForm() {
   const { t } = useI18n();
@@ -17,16 +19,18 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(params.get("error") === "link" ? t.errors.generic : null);
   const [loading, setLoading] = useState(false);
+  const captcha = useCaptcha();
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await createClient().auth.signInWithPassword({ email, password });
+    const { error } = await createClient().auth.signInWithPassword({ email, password, options: captcha.options });
     setLoading(false);
     if (error) {
-      setError(/confirm/i.test(error.message) ? t.auth.emailNotConfirmed : t.auth.invalidCredentials);
+      captcha.reset();
+      setError(isCaptchaError(error) ? t.auth.captchaFailed : /confirm/i.test(error.message) ? t.auth.emailNotConfirmed : t.auth.invalidCredentials);
       return;
     }
     void fetch("/api/analytics", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind: "session" }), keepalive: true }).catch(() => {});
@@ -59,8 +63,9 @@ export function LoginForm() {
           </div>
           <input id="password" type="password" autoComplete="current-password" required className="input" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
+        {captcha.widget}
         {error && <Alert tone="error">{error}</Alert>}
-        <button type="submit" className="btn-primary w-full" disabled={loading || !configured}>
+        <button type="submit" className="btn-primary w-full" disabled={loading || !configured || !captcha.ready}>
           {loading ? t.common.loading : t.auth.login}
         </button>
       </form>
