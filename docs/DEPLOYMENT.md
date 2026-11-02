@@ -5,7 +5,7 @@ Any Node.js 20+ host that runs `next start` works as well.
 
 ## 1. Supabase project
 
-1. Create a project at https://supabase.com (choose an EU region for EU users, e.g. Frankfurt or Paris).
+1. Create a project at https://supabase.com (choose São Paulo, sa-east-1 — the app sells in Brazil and Vercel functions run in gru1).
 2. Apply the migrations:
    ```bash
    npx supabase login
@@ -95,7 +95,7 @@ Setting `ANTHROPIC_API_KEY` switches to Claude: `AI_MODEL_EXTRACT` (default `cla
 requirement extraction, `AI_MODEL_WRITE` (default `claude-sonnet-5-5`) for suggestion wording, cover letters and interview prep.
 Requirement matching and the score stay deterministic, and every model output passes the same
 grounding and fact checks as the rule-based engine. If the API fails, the app falls back to the rule-based engine.
-Each full analysis costs about €0.10 of API usage (see docs/PAYMENTS.md); token counts are recorded in `usage_events` (no content).
+Each full analysis costs about R$ 0,60 (US$0.11) of API usage (see docs/PAYMENTS.md); token counts are recorded in `usage_events` (no content).
 
 ## Optional: OCR for scanned PDFs
 

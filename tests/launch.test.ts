@@ -63,6 +63,10 @@ function memoryStore() {
     async addPaidCredits(_userId, amount, ref) {
       ledger.set(ref, amount);
     },
+    paidBalance: async () => [...ledger.values()].reduce((sum, n) => sum + n, 0),
+    async revokePaidCredits(_userId, amount, ref) {
+      ledger.set(ref, -amount);
+    },
     async upsertSubscription(s) {
       subs.set(s.userId, s.planId);
     },

@@ -29,7 +29,12 @@ export async function POST(req: Request) {
 
   try {
     const store = supabaseBillingStore(createAdminClient());
-    const outcome = await handleStripeEvent(event, store, (id) => stripe.subscriptions.retrieve(id));
+    const outcome = await handleStripeEvent(
+      event,
+      store,
+      (id) => stripe.subscriptions.retrieve(id),
+      (id) => stripe.paymentIntents.retrieve(id),
+    );
     log.info("stripe.webhook", { type: event.type, eventId: event.id, outcome });
     if (outcome !== "duplicate") {
       // NexForge panel metrics; never blocks or fails the webhook.
