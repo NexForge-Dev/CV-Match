@@ -153,7 +153,7 @@ if (!/^(sk|rk)_(test|live)_/.test(sk) || sk.includes("placeholder") || sk === "s
       }
     }
     if (!isLocal) {
-      const needed = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "charge.refunded"];
+      const needed = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "charge.refunded", "charge.dispute.created"];
       const url = `${appUrl.replace(/\/$/, "")}/api/stripe/webhook`;
       const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
       const ep = endpoints.data.find((e) => e.url === url && e.status === "enabled");

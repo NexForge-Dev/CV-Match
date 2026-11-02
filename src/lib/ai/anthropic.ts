@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { cvDataSchema, cvToPlainText, newId, type CvData } from "@/lib/cv/schema";
+import { clampCv, cvDataSchema, cvToPlainText, newId, type CvData } from "@/lib/cv/schema";
 import { requirementSchema, type Requirement } from "@/lib/analysis/requirements";
 import { generateHeuristicSuggestions, type SuggestionDraft } from "@/lib/analysis/suggestions";
 import { findSkills } from "@/lib/analysis/taxonomy";
@@ -104,7 +104,7 @@ export class AnthropicProvider implements AiProvider {
     );
     // Grounding: drop any item that cannot be found in the source text.
     const g = (s: string) => (s && isGrounded(s, text, 0.7) ? s : "");
-    const cv: CvData = cvDataSchema.parse({
+    const cv: CvData = cvDataSchema.parse(clampCv({
       contact: { fullName: g(data.fullName), headline: g(data.headline), email: g(data.email), phone: g(data.phone), location: g(data.location), links: data.links.filter((l) => isGrounded(l, text)) },
       summary: g(data.summary),
       experiences: data.experiences
@@ -119,7 +119,7 @@ export class AnthropicProvider implements AiProvider {
         .filter((p) => p.name || p.description),
       languages: data.languages.filter((l) => isGrounded(l.name, text)).map((l) => ({ name: l.name, level: g(l.level) })),
       certifications: data.certifications.filter((c) => isGrounded(c, text, 0.7)),
-    });
+    }));
     return { value: cv, usage };
   }
 
@@ -192,7 +192,8 @@ export class AnthropicProvider implements AiProvider {
       "write",
       LlmLetter,
       `Write a concise cover letter (max 300 words) in ${LANG_NAME[input.language]} for the job below, using only facts from the resume. Never invent experience, numbers, results or technologies. Do not claim requirements the resume does not show. Sign with the candidate's name from the resume.`,
-      `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\nJob title: ${input.job.title}\nCompany: ${input.job.company}\nRequirements the resume shows: ${found || "none identified"}`,
+      // Title and company are typed by the user: they go inside the untrusted block like the ad itself.
+      `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\n${wrapUntrusted("job", `Job title: ${input.job.title}\nCompany: ${input.job.company}\nRequirements the resume shows: ${found || "none identified"}`, 8000)}`,
     );
     return { value: data.letter, usage };
   }
@@ -205,7 +206,7 @@ export class AnthropicProvider implements AiProvider {
       "write",
       LlmInterview,
       `Prepare up to 10 likely interview questions for this job in ${LANG_NAME[input.language]}. For each, quote verbatim resume lines as evidence (empty list if none) and give an honest preparation tip. Never suggest claiming experience the resume does not show.`,
-      `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\nJob: ${input.job.title} — ${input.job.company}\nRequirements and status:\n${wrapUntrusted("job", reqs, 8000)}`,
+      `${wrapUntrusted("cv", cvToPlainText(input.cv), this.maxChars)}\n\n${wrapUntrusted("job", `Job: ${input.job.title} — ${input.job.company}\nRequirements and status:\n${reqs}`, 8000)}`,
     );
     const cvText = cvToPlainText(input.cv);
     const items = data.items

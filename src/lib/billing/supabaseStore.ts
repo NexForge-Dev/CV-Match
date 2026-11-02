@@ -1,6 +1,13 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { BillingStore } from "./webhook";
+import { UnknownUserError, type BillingStore } from "./webhook";
+
+/** 23503 = foreign key violation: the user row is gone (account deleted). */
+function check(error: { code?: string } | null) {
+  if (!error) return;
+  if (error.code === "23503") throw new UnknownUserError();
+  throw error;
+}
 
 export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
   return {
@@ -20,7 +27,7 @@ export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
       const { error } = await admin
         .from("credit_ledger")
         .upsert({ user_id: userId, delta: amount, credit_type: "paid", reason: "pack_purchase", external_ref: ref }, { onConflict: "external_ref", ignoreDuplicates: true });
-      if (error) throw error;
+      check(error);
     },
     async paidBalance(userId) {
       const { data, error } = await admin.from("credit_ledger").select("delta").eq("user_id", userId).eq("credit_type", "paid");
@@ -31,7 +38,15 @@ export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
       const { error } = await admin
         .from("credit_ledger")
         .upsert({ user_id: userId, delta: -amount, credit_type: "paid", reason: "refund", external_ref: ref }, { onConflict: "external_ref", ignoreDuplicates: true });
+      check(error);
+    },
+    async revokedFor(userId, key) {
+      // Few rows per user: filter in code instead of escaping the ref inside a PostgREST filter.
+      const { data, error } = await admin.from("credit_ledger").select("delta, external_ref").eq("user_id", userId).eq("credit_type", "paid").eq("reason", "refund");
       if (error) throw error;
+      return (data ?? [])
+        .filter((row) => row.external_ref === key || String(row.external_ref ?? "").startsWith(`${key}:`))
+        .reduce((sum, row) => sum - (row.delta as number), 0);
     },
     async upsertSubscription(s) {
       const { error } = await admin.from("subscriptions").upsert(
@@ -47,7 +62,7 @@ export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
         },
         { onConflict: "user_id" },
       );
-      if (error) throw error;
+      check(error);
     },
     async getSubscription(userId) {
       const { data } = await admin.from("subscriptions").select("stripe_subscription_id, status").eq("user_id", userId).maybeSingle();

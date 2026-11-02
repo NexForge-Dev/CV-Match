@@ -50,7 +50,9 @@ export type ServerEnv = z.infer<typeof serverSchema>;
 let cached: ServerEnv | null = null;
 
 export function env(): ServerEnv {
-  if (!cached) cached = serverSchema.parse(process.env);
+  // An empty variable (e.g. NEXFORGE_ENDPOINT= in the dashboard) means "not set": without this, optional
+  // URL/enum settings failed validation and every API route answered 500.
+  if (!cached) cached = serverSchema.parse(Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== "")));
   return cached;
 }
 

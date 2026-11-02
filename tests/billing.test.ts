@@ -28,6 +28,9 @@ function memoryStore() {
     async revokePaidCredits(userId, amount, ref) {
       if (!ledger.has(ref)) ledger.set(ref, { userId, amount: -amount });
     },
+    async revokedFor(userId, key) {
+      return [...ledger.entries()].filter(([ref, e]) => e.userId === userId && (ref === key || ref.startsWith(`${key}:`))).reduce((sum, [, e]) => sum - e.amount, 0);
+    },
     async upsertSubscription(s) {
       subs.set(s.userId, s);
     },
@@ -79,7 +82,7 @@ describe("stripe webhook handler", () => {
     const charge = { id: "ch_1", amount: 1990, amount_refunded: 1393, payment_intent: "pi_1", metadata: {} };
     const fetchPi = async () => ({ metadata: { user_id: "user-1", plan_id: "pack_10" } }) as unknown as Stripe.PaymentIntent;
     expect(await handleStripeEvent(event("evt_r1", "charge.refunded", charge), store, noFetch, fetchPi)).toBe("credits_revoked");
-    expect(ledger.get("refund:ch_1")).toEqual({ userId: "user-1", amount: -7 });
+    expect(ledger.get("refund:ch_1:1393")).toEqual({ userId: "user-1", amount: -7 });
     expect(await store.paidBalance("user-1")).toBe(0);
     // Retried event or a second refund event of the same charge: nothing more is removed.
     expect(await handleStripeEvent(event("evt_r1", "charge.refunded", charge), store, noFetch, fetchPi)).toBe("duplicate");

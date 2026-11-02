@@ -123,7 +123,11 @@ Endpoint: `POST /api/stripe/webhook` (signature verified with `STRIPE_WEBHOOK_SE
 | `checkout.session.async_payment_succeeded`    | Same as above for delayed payment methods                  |
 | `checkout.session.completed` (subscription)   | Creates/updates the subscription row                       |
 | `customer.subscription.created/updated/deleted` | Syncs status, period and cancel-at-period-end            |
-| `charge.refunded` (pack)                      | Removes the refunded share of the pack credits (capped at the paid balance), once per charge |
+| `charge.refunded` (pack)                      | Removes the refunded share of the pack credits (capped at the paid balance); later partial refunds of the same charge remove only the difference |
+| `charge.dispute.created` (pack)               | Removes the disputed share of the pack credits, once per dispute |
+
+Events for an account that no longer exists (e.g. `customer.subscription.deleted` sent after the user deleted
+the account, which cancels the subscription and deletes the Stripe customer) are recorded and ignored.
 
 Processing is idempotent: event ids are recorded in `stripe_events`, credits are keyed by checkout session id
 and subscriptions are upserted per user. Returning 500 lets Stripe retry safely.
@@ -152,15 +156,16 @@ no_payment_required`) is granted like a paid one.
 **Refunds (Brazil, CDC art. 49: 7-day right of withdrawal).** Policy: full refund within 7 days of purchase if no
 paid analysis was used, proportional to the unused analyses otherwise. Refund in the Stripe Dashboard (Payments →
 Refund): `charge.refunded` removes the refunded share of the pack credits automatically (rounded up, capped at the
-user's paid balance, once per charge). For a subscription, refund the first invoice and cancel the subscription —
-`customer.subscription.deleted` ends Pro access. A second partial refund of the same charge, or a dispute
-(`charge.dispute.created`), still needs a manual ledger adjustment:
+user's paid balance; `amount_refunded` is cumulative, so a second partial refund of the same charge removes only
+the difference). A dispute (`charge.dispute.created`) removes the disputed share the same way. For a subscription,
+refund the first invoice and cancel the subscription — `customer.subscription.deleted` ends Pro access. If a
+dispute is won, give the credits back by hand:
 
 ```sql
--- remaining paid credits of the user (never take more than this)
-select coalesce(sum(delta), 0) from public.credit_ledger where user_id = '<user id>' and credit_type = 'paid';
+-- credits the dispute removed (positive number)
+select -sum(delta) from public.credit_ledger where user_id = '<user id>' and external_ref = 'dispute:<stripe dispute id>';
 insert into public.credit_ledger (user_id, delta, credit_type, reason, external_ref)
-values ('<user id>', -<credits>, 'paid', 'admin_adjustment', 'adjust:<stripe charge id>');
+values ('<user id>', <credits>, 'paid', 'admin_adjustment', 'adjust:<stripe dispute id>');
 ```
 
 Refunding a subscription: cancel it in Stripe; the webhook removes the quota at once when the status becomes `canceled`.

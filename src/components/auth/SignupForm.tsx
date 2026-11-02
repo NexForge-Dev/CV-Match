@@ -8,7 +8,7 @@ import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
-import { isCaptchaError } from "@/lib/captcha";
+import { authErrorMessage } from "@/lib/authErrors";
 import { useCaptcha } from "./Captcha";
 
 export function SignupForm() {
@@ -48,7 +48,7 @@ export function SignupForm() {
     setLoading(false);
     if (error) {
       captcha.reset();
-      setError(isCaptchaError(error) ? t.auth.captchaFailed : error.message.length < 160 ? error.message : t.errors.generic);
+      setError(authErrorMessage(t, error));
       return;
     }
     if (data.user) {

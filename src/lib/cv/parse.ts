@@ -1,4 +1,4 @@
-import { cvDataSchema, newId, type CvData, type Education, type Experience, type Project } from "./schema";
+import { clampCv, cvDataSchema, newId, type CvData, type Education, type Experience, type Project } from "./schema";
 import { normalize } from "@/lib/analysis/text";
 import { findSkills } from "@/lib/analysis/taxonomy";
 
@@ -219,7 +219,7 @@ export function parseCvText(text: string): CvData {
     skills = findSkills(text).map((s) => s.label);
   }
 
-  return cvDataSchema.parse({
+  return cvDataSchema.parse(clampCv({
     contact: {
       fullName,
       headline,
@@ -235,5 +235,5 @@ export function parseCvText(text: string): CvData {
     projects: parseProjects(sections.projects),
     languages: parseLanguages(sections.languages.filter(Boolean)).slice(0, 15),
     certifications: sections.certifications.map(stripBullet).filter(Boolean).slice(0, 40),
-  });
+  }));
 }

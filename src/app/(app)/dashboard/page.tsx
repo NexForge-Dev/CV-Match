@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="card p-5">
           <p className="text-sm font-medium text-ink-muted">{t.dashboard.credits}</p>
           <div className="mt-2 flex flex-wrap gap-2 text-sm">
@@ -69,8 +69,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="card p-5 lg:col-span-2">
+      {/* grid-cols-1: without an explicit template the column grows to fit long (truncated) titles on phones. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section className="card min-w-0 p-5 lg:col-span-2">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 font-semibold"><FileSearch className="h-4 w-4 text-brand-600" /> {t.dashboard.recentAnalyses}</h2>
             <Link href="/analyses" className="link text-sm">{t.dashboard.viewAll}</Link>
@@ -99,7 +100,7 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section className="card p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-brand-600" /> {t.dashboard.recentCvs}</h2>

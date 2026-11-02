@@ -33,9 +33,9 @@ export default async function DocumentsPage() {
             <li key={doc.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold">{doc.file_name}</p>
+                  <p className="truncate font-semibold">{doc.kind === "text" ? d.pastedText : doc.file_name}</p>
                   <p className="text-xs text-ink-muted">
-                    {doc.kind.toUpperCase()} · {d.size}: {size(doc.size_bytes)} · {formatDate(doc.created_at, locale)}
+                    {doc.kind === "text" ? d.pastedText : doc.kind.toUpperCase()} · {d.size}: {size(doc.size_bytes)} · {formatDate(doc.created_at, locale)}
                   </p>
                   <p className="mt-1 text-xs text-ink-soft">
                     {d.status}: {t.wizard.status[doc.extraction_status as keyof typeof t.wizard.status]} · {d.original}:{" "}

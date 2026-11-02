@@ -7,7 +7,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 const schema = z.object({
   status: z.enum(["pending", "accepted", "rejected"]).optional(),
-  editedText: z.string().max(6000).nullable().optional(),
+  // Same limit as the longest CV field the text can end up in (summary / bullet).
+  editedText: z.string().max(4000).nullable().optional(),
   confirmedByUser: z.boolean().optional(),
 });
 

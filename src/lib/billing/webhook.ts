@@ -11,6 +11,8 @@ export interface BillingStore {
   paidBalance(userId: string): Promise<number>;
   /** Removes paid credits (negative ledger entry). Must be idempotent on `ref`. */
   revokePaidCredits(userId: string, amount: number, ref: string): Promise<void>;
+  /** Credits already removed (a positive number) by ledger rows whose ref is `key` or starts with `key:`. */
+  revokedFor(userId: string, key: string): Promise<number>;
   upsertSubscription(sub: {
     userId: string;
     planId: string;
@@ -25,6 +27,17 @@ export interface BillingStore {
 }
 
 const LIVE = ["active", "trialing", "past_due"];
+
+/**
+ * Thrown by a store when the user no longer exists (e.g. the account was deleted, which also
+ * cancels the subscription and later produces `customer.subscription.deleted`). The event is
+ * recorded and ignored instead of failing forever and being retried by Stripe for days.
+ */
+export class UnknownUserError extends Error {
+  constructor() {
+    super("unknown_user");
+  }
+}
 
 export type FetchSubscription = (id: string) => Promise<Stripe.Subscription>;
 export type FetchPaymentIntent = (id: string) => Promise<Stripe.PaymentIntent>;
@@ -90,36 +103,59 @@ async function fulfillPack(session: Stripe.Checkout.Session, store: BillingStore
 }
 
 /**
- * Handles verified Stripe events. Idempotent: events are processed once, and
- * every write is itself idempotent (credits keyed by checkout session id,
- * subscriptions upserted by user), so retries are safe.
- */
-/**
  * Refund policy (CDC art. 49): a refunded pack loses the refunded share of its credits
  * (refunded amount / charged amount × credits in the pack, rounded up), never more than the paid credits
- * the user still has. Processed once per charge (`refund:<charge id>`); a second partial refund of the
- * same charge must be adjusted by hand. Subscription refunds need no credit change: cancelling the
- * subscription in Stripe ends Pro access through `customer.subscription.deleted`.
+ * the user still has. `amount_refunded` is cumulative, so every later partial refund of the same charge
+ * only removes the difference to what was already revoked for it (refs `refund:<charge id>[:<amount>]`).
+ * Subscription refunds need no credit change: cancelling the subscription in Stripe ends Pro access
+ * through `customer.subscription.deleted`.
  */
-async function revokeRefundedPack(charge: Stripe.Charge, store: BillingStore, fetchPaymentIntent?: FetchPaymentIntent) {
-  if (!charge.amount_refunded || !charge.amount) return "ignored";
+async function packMetadata(charge: { metadata?: Record<string, string> | null; payment_intent?: string | { id: string } | null }, fetchPaymentIntent?: FetchPaymentIntent) {
   let meta: Record<string, string> = charge.metadata ?? {};
   if (!meta.plan_id && charge.payment_intent && fetchPaymentIntent) {
     const piId = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent.id;
     meta = (await fetchPaymentIntent(piId)).metadata ?? {};
   }
+  return meta;
+}
+
+async function revokeShare(store: BillingStore, meta: Record<string, string>, share: number, key: string, ref: string) {
   const userId = meta.user_id;
   const planId = meta.plan_id;
   if (!userId || !planId) return "ignored_missing_metadata";
   const plan = await store.getPlan(planId);
   if (!plan || plan.kind !== "pack") return "ignored_not_pack";
-  const share = Math.min(1, charge.amount_refunded / charge.amount);
-  const toRevoke = Math.min(Math.ceil(share * plan.analyses_included), await store.paidBalance(userId));
+  const due = Math.ceil(Math.min(1, share) * plan.analyses_included) - (await store.revokedFor(userId, key));
+  const toRevoke = Math.min(due, await store.paidBalance(userId));
   if (toRevoke <= 0) return "refund_nothing_to_revoke";
-  await store.revokePaidCredits(userId, toRevoke, `refund:${charge.id}`);
+  await store.revokePaidCredits(userId, toRevoke, ref);
   return "credits_revoked";
 }
 
+async function revokeRefundedPack(charge: Stripe.Charge, store: BillingStore, fetchPaymentIntent?: FetchPaymentIntent) {
+  if (!charge.amount_refunded || !charge.amount) return "ignored";
+  const meta = await packMetadata(charge, fetchPaymentIntent);
+  return revokeShare(store, meta, charge.amount_refunded / charge.amount, `refund:${charge.id}`, `refund:${charge.id}:${charge.amount_refunded}`);
+}
+
+/**
+ * A dispute (chargeback) takes the money back like a refund: the disputed share of the pack is revoked
+ * when the dispute opens. If the dispute is later won, restore the credits by hand (admin_adjustment).
+ */
+async function revokeDisputedPack(dispute: Stripe.Dispute, store: BillingStore, fetchPaymentIntent?: FetchPaymentIntent) {
+  if (!dispute.payment_intent || !fetchPaymentIntent) return "ignored";
+  const piId = typeof dispute.payment_intent === "string" ? dispute.payment_intent : dispute.payment_intent.id;
+  const pi = await fetchPaymentIntent(piId);
+  const charged = pi.amount_received || pi.amount;
+  if (!charged || !dispute.amount) return "ignored";
+  return revokeShare(store, pi.metadata ?? {}, dispute.amount / charged, `dispute:${dispute.id}`, `dispute:${dispute.id}`);
+}
+
+/**
+ * Handles verified Stripe events. Idempotent: events are processed once, and
+ * every write is itself idempotent (credits keyed by checkout session id,
+ * subscriptions upserted by user), so retries are safe.
+ */
 export async function handleStripeEvent(
   event: Stripe.Event,
   store: BillingStore,
@@ -127,6 +163,18 @@ export async function handleStripeEvent(
   fetchPaymentIntent?: FetchPaymentIntent,
 ): Promise<string> {
   if (await store.isProcessed(event.id)) return "duplicate";
+  let outcome = "ignored";
+  try {
+    outcome = await dispatch(event, store, fetchSubscription, fetchPaymentIntent);
+  } catch (err) {
+    if (!(err instanceof UnknownUserError)) throw err;
+    outcome = "ignored_unknown_user";
+  }
+  await store.markProcessed(event.id, event.type);
+  return outcome;
+}
+
+async function dispatch(event: Stripe.Event, store: BillingStore, fetchSubscription: FetchSubscription, fetchPaymentIntent?: FetchPaymentIntent): Promise<string> {
   let outcome = "ignored";
   switch (event.type) {
     case "checkout.session.completed":
@@ -147,9 +195,11 @@ export async function handleStripeEvent(
     case "charge.refunded":
       outcome = await revokeRefundedPack(event.data.object as Stripe.Charge, store, fetchPaymentIntent);
       break;
+    case "charge.dispute.created":
+      outcome = await revokeDisputedPack(event.data.object as Stripe.Dispute, store, fetchPaymentIntent);
+      break;
     default:
       outcome = "ignored";
   }
-  await store.markProcessed(event.id, event.type);
   return outcome;
 }
