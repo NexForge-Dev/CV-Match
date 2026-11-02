@@ -80,6 +80,10 @@ const en = {
     unsafe_archive: "This DOCX file has an unusual structure and was rejected for safety. Save it again from Word or export a PDF.",
     already_subscribed: "You already have an active subscription. Manage it in the billing portal.",
     terms_consent_required: "To buy, tick the box confirming you read the Terms and the refund policy.",
+    cv_limits: "The resulting CV would exceed the size limits (e.g. a summary over 4,000 characters or more than 150 skills). Shorten your edits and try again.",
+    last_version: "A CV needs at least one version: this is the only one left.",
+    duplicate: "This item already exists.",
+    url: "Enter a link starting with http:// or https://.",
   },
   auth: {
     loginTitle: "Log in",
@@ -453,6 +457,10 @@ const pt: Dictionary = {
     unsafe_archive: "Este DOCX tem uma estrutura incomum e foi recusado por segurança. Salve novamente no Word ou exporte um PDF.",
     already_subscribed: "Você já tem uma assinatura ativa. Gerencie-a no portal de pagamento.",
     terms_consent_required: "Para comprar, marque a caixa confirmando que você leu os Termos e a política de reembolso.",
+    cv_limits: "O currículo resultante passaria dos limites de tamanho (por exemplo, resumo com mais de 4.000 caracteres ou mais de 150 competências). Encurte suas edições e tente de novo.",
+    last_version: "Um currículo precisa de pelo menos uma versão: esta é a única restante.",
+    duplicate: "Este item já existe.",
+    url: "Informe um link que comece com http:// ou https://.",
   },
   auth: {
     loginTitle: "Entrar",
@@ -824,6 +832,10 @@ const es: Dictionary = {
     unsafe_archive: "Este DOCX tiene una estructura inusual y se rechazó por seguridad. Guárdalo de nuevo en Word o exporta un PDF.",
     already_subscribed: "Ya tienes una suscripción activa. Gestiónala en el portal de pago.",
     terms_consent_required: "Para comprar, marca la casilla confirmando que leíste los Términos y la política de reembolso.",
+    cv_limits: "El currículum resultante superaría los límites de tamaño (por ejemplo, un resumen de más de 4.000 caracteres o más de 150 competencias). Acorta tus ediciones e inténtalo de nuevo.",
+    last_version: "Un currículum necesita al menos una versión: esta es la única que queda.",
+    duplicate: "Este elemento ya existe.",
+    url: "Introduce un enlace que empiece por http:// o https://.",
   },
   auth: {
     loginTitle: "Iniciar sesión",
