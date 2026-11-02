@@ -303,9 +303,14 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                 <button
                   className="btn-secondary btn-sm"
                   onClick={async () => {
-                    await navigator.clipboard.writeText(letter);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1500);
+                    try {
+                      await navigator.clipboard.writeText(letter);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    } catch {
+                      // Clipboard blocked (permissions / insecure context): the text stays selectable in the box.
+                      setError(t.errors.generic);
+                    }
                   }}
                 >
                   <Copy className="h-3.5 w-3.5" /> {copied ? a.copied : a.copy}
