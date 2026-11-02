@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// In the browser, skip Zod's JIT: its feature probe calls new Function(), which the CSP (no 'unsafe-eval') blocks
+// and reports as a violation. The interpreted parser is equivalent and fast enough for CV-sized data.
+if (typeof window !== "undefined") z.config({ jitless: true });
+
 export const CV_LANGUAGES = ["pt", "es", "en"] as const;
 export type CvLanguage = (typeof CV_LANGUAGES)[number];
 export const cvLanguageSchema = z.enum(CV_LANGUAGES);
