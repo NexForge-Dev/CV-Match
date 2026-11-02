@@ -6,7 +6,7 @@ CV Match compares a candidate's CV with a specific job description, shows the ev
 and suggests targeted improvements — **without inventing experience, metrics, technologies, languages or results**.
 
 - Interface in **Portuguese, Spanish and English**; generated content in the language the candidate chooses.
-- Built first for tech professionals, graduates and candidates applying in Spain or internationally; the skill
+- Built first for tech professionals, graduates and candidates applying in Brazil or internationally; the skill
   taxonomy and requirement extractor are data-driven, so new sectors and countries can be added without code changes.
 
 > The compatibility index is an estimate computed by the tool. It is **not** a hiring probability,
@@ -125,8 +125,8 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | `OCR_PROVIDER`, `OCR_HTTP_URL`, `OCR_HTTP_TOKEN` | Optional OCR adapter |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments (test keys first) |
 | `CRON_SECRET` | Protects `/api/cron/cleanup` |
-| `STRIPE_AUTOMATIC_TAX` | `true` turns on Stripe Tax (VAT) at checkout |
-| `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_BACKUP_RETENTION_DAYS` | Provider identity shown on `/legal` (LSSI-CE) and `/privacy` (GDPR) — required in production |
+| `STRIPE_AUTOMATIC_TAX` | `true` turns on Stripe Tax at checkout (not available in Brazil — keep `false`) |
+| `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_BACKUP_RETENTION_DAYS` | Provider identity (name, CPF/CNPJ, address, e-mail) shown on `/legal` (Decreto 7.962/2013, LGPD) and `/privacy` (GDPR) — required in production |
 
 **Plans and prices** are rows in the `plans` table — see [docs/PAYMENTS.md](./docs/PAYMENTS.md).
 

@@ -1,18 +1,20 @@
 /**
- * EU right of withdrawal (Directive 2011/83/EU art. 16(m); Spain: TRLGDCU art. 103(m)).
- * Packs and subscriptions are digital content/services supplied right after payment, so the buyer
- * must expressly request immediate performance and acknowledge losing the 14-day withdrawal right
- * before paying. The checkout route refuses to start without it and stores this record in the
- * Stripe Checkout Session (and its PaymentIntent / Subscription) metadata.
+ * Purchase terms acceptance (Brazil). Under CDC art. 49 online buyers have a 7-day right of withdrawal
+ * (direito de arrependimento) that cannot be waived, so the buyer does not give anything up here: they
+ * confirm they read the Terms and the refund policy (full refund within 7 days if no paid analysis was
+ * used, proportional otherwise). Decreto 7.962/2013 requires that information to be clear before paying.
+ * The checkout route refuses to start without it and stores this record in the Stripe Checkout Session
+ * (and its PaymentIntent / Subscription) metadata.
  *
- * Bump the version whenever the consent wording in the dictionaries changes.
+ * Bump the version whenever the consent wording in the dictionaries or the refund policy changes.
  */
-export const WITHDRAWAL_WAIVER_VERSION = "2026-11-02";
+export const TERMS_VERSION = "2026-11-02-br";
+export const REFUND_WINDOW_DAYS = 7;
 
-export function withdrawalWaiverMetadata(now: Date = new Date()) {
+export function termsAcceptanceMetadata(now: Date = new Date()) {
   return {
-    withdrawal_waiver: "accepted",
-    withdrawal_waiver_at: now.toISOString(),
-    withdrawal_waiver_version: WITHDRAWAL_WAIVER_VERSION,
+    terms_accepted: "true",
+    terms_accepted_at: now.toISOString(),
+    terms_version: TERMS_VERSION,
   };
 }

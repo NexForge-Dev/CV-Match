@@ -22,6 +22,17 @@ export function supabaseBillingStore(admin: SupabaseClient): BillingStore {
         .upsert({ user_id: userId, delta: amount, credit_type: "paid", reason: "pack_purchase", external_ref: ref }, { onConflict: "external_ref", ignoreDuplicates: true });
       if (error) throw error;
     },
+    async paidBalance(userId) {
+      const { data, error } = await admin.from("credit_ledger").select("delta").eq("user_id", userId).eq("credit_type", "paid");
+      if (error) throw error;
+      return (data ?? []).reduce((sum, row) => sum + (row.delta as number), 0);
+    },
+    async revokePaidCredits(userId, amount, ref) {
+      const { error } = await admin
+        .from("credit_ledger")
+        .upsert({ user_id: userId, delta: -amount, credit_type: "paid", reason: "refund", external_ref: ref }, { onConflict: "external_ref", ignoreDuplicates: true });
+      if (error) throw error;
+    },
     async upsertSubscription(s) {
       const { error } = await admin.from("subscriptions").upsert(
         {

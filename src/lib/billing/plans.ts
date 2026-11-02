@@ -29,10 +29,10 @@ export type Plan = z.infer<typeof planSchema>;
  * limits and features — edit it, not this file.
  */
 export const FALLBACK_PLANS: Plan[] = [
-  { id: "free", name: "Free", kind: "free", price_cents: 0, currency: "eur", billing_interval: null, analyses_included: 1, features: { max_suggestions: 5, cover_letter: false, interview_prep: false, export_docx: true, export_pdf: true }, sort: 0 },
-  { id: "pack_10", name: "Analysis pack", kind: "pack", price_cents: 990, currency: "eur", billing_interval: null, analyses_included: 10, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 1 },
-  { id: "pro_monthly", name: "Pro", kind: "subscription", price_cents: 1490, currency: "eur", billing_interval: "month", analyses_included: 50, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 2 },
-  { id: "pro_quarterly", name: "Pro (3 months)", kind: "subscription", price_cents: 3490, currency: "eur", billing_interval: "quarter", analyses_included: 150, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 3 },
+  { id: "free", name: "Grátis", kind: "free", price_cents: 0, currency: "brl", billing_interval: null, analyses_included: 1, features: { max_suggestions: 5, cover_letter: false, interview_prep: false, export_docx: true, export_pdf: true }, sort: 0 },
+  { id: "pack_10", name: "Pacote 10 análises", kind: "pack", price_cents: 1990, currency: "brl", billing_interval: null, analyses_included: 10, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 1 },
+  { id: "pro_monthly", name: "Pro mensal", kind: "subscription", price_cents: 2990, currency: "brl", billing_interval: "month", analyses_included: 50, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 2 },
+  { id: "pro_quarterly", name: "Pro trimestral", kind: "subscription", price_cents: 6990, currency: "brl", billing_interval: "quarter", analyses_included: 150, features: { max_suggestions: null, cover_letter: true, interview_prep: true, export_docx: true, export_pdf: true }, sort: 3 },
 ];
 
 /** Stripe has no "quarter" interval: it is billed as every 3 months. */

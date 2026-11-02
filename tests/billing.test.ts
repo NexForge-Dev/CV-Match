@@ -22,6 +22,12 @@ function memoryStore() {
     async addPaidCredits(userId, amount, ref) {
       if (!ledger.has(ref)) ledger.set(ref, { userId, amount });
     },
+    async paidBalance(userId) {
+      return [...ledger.values()].filter((e) => e.userId === userId).reduce((sum, e) => sum + e.amount, 0);
+    },
+    async revokePaidCredits(userId, amount, ref) {
+      if (!ledger.has(ref)) ledger.set(ref, { userId, amount: -amount });
+    },
     async upsertSubscription(s) {
       subs.set(s.userId, s);
     },
@@ -62,6 +68,34 @@ describe("stripe webhook handler", () => {
     // Same session delivered under a different event id (e.g. async_payment_succeeded) is still credited once.
     await handleStripeEvent(event("evt_2", "checkout.session.async_payment_succeeded", session), store, noFetch);
     expect([...ledger.values()]).toEqual([{ userId: "user-1", amount: 10 }]);
+  });
+
+  it("removes the refunded share of a pack's credits once, capped at the remaining paid balance", async () => {
+    const { store, ledger } = memoryStore();
+    const paid = { id: "cs_r", mode: "payment", payment_status: "paid", metadata: { user_id: "user-1", plan_id: "pack_10" } };
+    await handleStripeEvent(event("evt_r0", "checkout.session.completed", paid), store, noFetch);
+    // Customer used 3 analyses, then got a 70% proportional refund (CDC art. 49).
+    ledger.set("analysis:1", { userId: "user-1", amount: -3 });
+    const charge = { id: "ch_1", amount: 1990, amount_refunded: 1393, payment_intent: "pi_1", metadata: {} };
+    const fetchPi = async () => ({ metadata: { user_id: "user-1", plan_id: "pack_10" } }) as unknown as Stripe.PaymentIntent;
+    expect(await handleStripeEvent(event("evt_r1", "charge.refunded", charge), store, noFetch, fetchPi)).toBe("credits_revoked");
+    expect(ledger.get("refund:ch_1")).toEqual({ userId: "user-1", amount: -7 });
+    expect(await store.paidBalance("user-1")).toBe(0);
+    // Retried event or a second refund event of the same charge: nothing more is removed.
+    expect(await handleStripeEvent(event("evt_r1", "charge.refunded", charge), store, noFetch, fetchPi)).toBe("duplicate");
+    expect(await handleStripeEvent(event("evt_r2", "charge.refunded", { ...charge, amount_refunded: 1990 }), store, noFetch, fetchPi)).toBe("refund_nothing_to_revoke");
+    expect(await store.paidBalance("user-1")).toBe(0);
+  });
+
+  it("never revokes more than the user still has, and ignores refunds of subscriptions", async () => {
+    const { store, ledger } = memoryStore();
+    ledger.set("cs_x", { userId: "user-1", amount: 10 });
+    ledger.set("analysis:x", { userId: "user-1", amount: -8 });
+    const full = { id: "ch_2", amount: 1990, amount_refunded: 1990, metadata: { user_id: "user-1", plan_id: "pack_10" } };
+    expect(await handleStripeEvent(event("evt_r3", "charge.refunded", full), store, noFetch)).toBe("credits_revoked");
+    expect(await store.paidBalance("user-1")).toBe(0);
+    const sub = { id: "ch_3", amount: 2990, amount_refunded: 2990, metadata: { user_id: "user-1", plan_id: "pro_monthly" } };
+    expect(await handleStripeEvent(event("evt_r4", "charge.refunded", sub), store, noFetch)).toBe("ignored_not_pack");
   });
 
   it("does not credit unpaid sessions or unknown plans", async () => {
@@ -148,9 +182,11 @@ describe("plans configuration", () => {
   it("hypothetical prices respect the configured ranges", () => {
     const pack = FALLBACK_PLANS.find((p) => p.kind === "pack")!;
     const pro = FALLBACK_PLANS.find((p) => p.kind === "subscription")!;
-    expect(pack.price_cents).toBeGreaterThanOrEqual(500);
-    expect(pack.price_cents).toBeLessThanOrEqual(1000);
-    expect(pro.price_cents).toBeGreaterThanOrEqual(900);
-    expect(pro.price_cents).toBeLessThanOrEqual(1500);
+    // BRL (Brazil): pack R$ 19,90, Pro monthly R$ 29,90.
+    expect(pack.currency).toBe("brl");
+    expect(pack.price_cents).toBeGreaterThanOrEqual(1000);
+    expect(pack.price_cents).toBeLessThanOrEqual(3000);
+    expect(pro.price_cents).toBeGreaterThanOrEqual(1900);
+    expect(pro.price_cents).toBeLessThanOrEqual(5000);
   });
 });

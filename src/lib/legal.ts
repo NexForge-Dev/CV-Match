@@ -1,7 +1,7 @@
 import "server-only";
 
 /**
- * Identity of the service provider shown on the legal pages (GDPR art. 13, LSSI-CE art. 10).
+ * Identity of the service provider shown on the legal pages (LGPD art. 9; Decreto 7.962/2013 art. 2: name, CPF/CNPJ, physical and e-mail address).
  * Configured per deployment; `npm run verify:keys` blocks a launch while any is missing.
  */
 export const LEGAL_ENV = ["LEGAL_OPERATOR_NAME", "LEGAL_OPERATOR_TAX_ID", "LEGAL_OPERATOR_ADDRESS", "LEGAL_CONTACT_EMAIL"] as const;

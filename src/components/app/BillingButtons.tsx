@@ -6,27 +6,27 @@ import { api, errorMessage } from "@/lib/client/api";
 import { useI18n } from "@/lib/i18n/client";
 
 /**
- * EU right of withdrawal: before paying for digital content/services the buyer must expressly request
- * immediate access and acknowledge losing the 14-day withdrawal right. One checkbox covers every
- * CheckoutButton inside the provider; the server rejects a checkout without it.
+ * Purchase terms (Brazil, CDC art. 49 + Decreto 7.962/2013): before paying the buyer confirms they read the
+ * Terms and the 7-day refund policy. One checkbox covers every CheckoutButton inside the provider; the server
+ * rejects a checkout without it.
  */
-const WithdrawalConsentContext = createContext<{ accepted: boolean; setAccepted: (v: boolean) => void }>({ accepted: false, setAccepted: () => {} });
+const TermsConsentContext = createContext<{ accepted: boolean; setAccepted: (v: boolean) => void }>({ accepted: false, setAccepted: () => {} });
 
-export function WithdrawalConsentProvider({ children }: { children: ReactNode }) {
+export function TermsConsentProvider({ children }: { children: ReactNode }) {
   const [accepted, setAccepted] = useState(false);
-  return <WithdrawalConsentContext.Provider value={{ accepted, setAccepted }}>{children}</WithdrawalConsentContext.Provider>;
+  return <TermsConsentContext.Provider value={{ accepted, setAccepted }}>{children}</TermsConsentContext.Provider>;
 }
 
-export function WithdrawalConsentCheckbox() {
+export function TermsConsentCheckbox() {
   const { t } = useI18n();
-  const { accepted, setAccepted } = useContext(WithdrawalConsentContext);
+  const { accepted, setAccepted } = useContext(TermsConsentContext);
   return (
     <label className="card flex items-start gap-3 p-4 text-sm text-ink-soft">
       <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
       <span>
-        {t.billing.withdrawalConsent}{" "}
+        {t.billing.termsConsent}{" "}
         <a href="/terms" className="link" target="_blank" rel="noopener">{t.auth.terms}</a>
-        <span className="mt-1 block text-xs text-ink-muted">{t.billing.withdrawalConsentHint}</span>
+        <span className="mt-1 block text-xs text-ink-muted">{t.billing.termsConsentHint}</span>
       </span>
     </label>
   );
@@ -34,14 +34,14 @@ export function WithdrawalConsentCheckbox() {
 
 export function CheckoutButton({ planId, label, disabled }: { planId: string; label: string; disabled?: boolean }) {
   const { t } = useI18n();
-  const { accepted } = useContext(WithdrawalConsentContext);
+  const { accepted } = useContext(TermsConsentContext);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function go() {
-    if (!accepted) return setError(t.errors.withdrawal_consent_required);
+    if (!accepted) return setError(t.errors.terms_consent_required);
     setBusy(true);
     setError(null);
-    const res = await api<{ url: string }>("/api/billing/checkout", { method: "POST", json: { planId, withdrawalConsent: true } });
+    const res = await api<{ url: string }>("/api/billing/checkout", { method: "POST", json: { planId, termsAccepted: true } });
     if (!res.ok) {
       setBusy(false);
       return setError(errorMessage(t, res.error, res.detail));

@@ -1,6 +1,6 @@
 export const LOCALES = ["pt", "es", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "pt";
 export const LOCALE_COOKIE = "cvm_locale";
 
 export const LOCALE_NAMES: Record<Locale, string> = { pt: "Português", es: "Español", en: "English" };
@@ -20,11 +20,11 @@ export function fromAcceptLanguage(header: string | null): Locale {
 }
 
 export function formatDate(iso: string, locale: Locale) {
-  const tag = locale === "pt" ? "pt-BR" : locale === "es" ? "es-ES" : "en-GB";
+  const tag = locale === "pt" ? "pt-BR" : locale === "es" ? "es-419" : "en-US";
   return new Date(iso).toLocaleDateString(tag, { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function formatPrice(cents: number, currency: string, locale: Locale) {
-  const tag = locale === "pt" ? "pt-PT" : locale === "es" ? "es-ES" : "en-IE";
+  const tag = locale === "pt" ? "pt-BR" : locale === "es" ? "es-419" : "en-US";
   return new Intl.NumberFormat(tag, { style: "currency", currency: currency.toUpperCase(), minimumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100);
 }

@@ -7,7 +7,7 @@ import { getPublicPlans } from "@/lib/billing/getPlans";
 import { env } from "@/lib/env";
 import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { Alert, PageHeader } from "@/components/ui";
-import { CheckoutButton, PortalButton, WithdrawalConsentCheckbox, WithdrawalConsentProvider } from "@/components/app/BillingButtons";
+import { CheckoutButton, PortalButton, TermsConsentCheckbox, TermsConsentProvider } from "@/components/app/BillingButtons";
 import { track } from "@/lib/analytics";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -61,8 +61,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         </div>
       </section>
 
-      <WithdrawalConsentProvider>
-        <WithdrawalConsentCheckbox />
+      <TermsConsentProvider>
+        <TermsConsentCheckbox />
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => {
             const f = plan.features;
@@ -94,7 +94,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             );
           })}
         </section>
-      </WithdrawalConsentProvider>
+      </TermsConsentProvider>
 
       {ledger.data && ledger.data.length > 0 && (
         <section className="card p-6">

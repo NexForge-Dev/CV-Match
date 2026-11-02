@@ -44,7 +44,7 @@ else if (!appUrl.startsWith("https://")) fail("NEXT_PUBLIC_APP_URL must use http
 else ok("public https URL");
 if (!E.CRON_SECRET || E.CRON_SECRET.length < 16) fail("CRON_SECRET missing or too short (use: openssl rand -hex 32)");
 else ok("CRON_SECRET set");
-// Shown on /legal and /privacy (GDPR art. 13, LSSI-CE art. 10).
+// Shown on /legal and /privacy (LGPD art. 9; Decreto 7.962/2013 art. 2: name, CPF/CNPJ, physical and e-mail address).
 const legalMissing = ["LEGAL_OPERATOR_NAME", "LEGAL_OPERATOR_TAX_ID", "LEGAL_OPERATOR_ADDRESS", "LEGAL_CONTACT_EMAIL"].filter((k) => !E[k]?.trim());
 if (legalMissing.length && !isLocal) fail(`legal pages incomplete — set ${legalMissing.join(", ")}`);
 else if (legalMissing.length) warn(`legal operator details not set (${legalMissing.join(", ")}) — required in production`);
@@ -153,7 +153,7 @@ if (!/^(sk|rk)_(test|live)_/.test(sk) || sk.includes("placeholder") || sk === "s
       }
     }
     if (!isLocal) {
-      const needed = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"];
+      const needed = ["checkout.session.completed", "checkout.session.async_payment_succeeded", "customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted", "charge.refunded"];
       const url = `${appUrl.replace(/\/$/, "")}/api/stripe/webhook`;
       const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });
       const ep = endpoints.data.find((e) => e.url === url && e.status === "enabled");
