@@ -40,7 +40,8 @@ export function ProfileForm({ initial }: { initial: ProfileData }) {
   }
 
   return (
-    <form onSubmit={save} className="card space-y-4 p-6">
+    <form onSubmit={save} className="card space-y-5 p-5 sm:p-6">
+      <h2 className="font-semibold text-ink">{p.personal}</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="p-name">{p.fullName}</label>
@@ -58,6 +59,9 @@ export function ProfileForm({ initial }: { initial: ProfileData }) {
           <label className="label" htmlFor="p-targets">{p.targetLocations}</label>
           <input id="p-targets" className="input" value={targets} onChange={(e) => setTargets(e.target.value)} placeholder="São Paulo, Rio de Janeiro, Remoto" />
         </div>
+      </div>
+      <h2 className="border-t border-slate-100 pt-5 font-semibold text-ink">{p.preferences}</h2>
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="p-ui">{p.uiLanguage}</label>
           <select id="p-ui" className="input" value={form.ui_locale} onChange={(e) => setForm({ ...form, ui_locale: e.target.value as ProfileData["ui_locale"] })}>
@@ -109,29 +113,31 @@ export function SkillBank({ initial }: { initial: { id: string; name: string; le
   }
 
   return (
-    <section className="card p-6">
-      <h2 className="font-semibold">{p.skillBank}</h2>
+    <section className="card p-5 sm:p-6">
+      <h2 className="font-semibold text-ink">{p.skillBank}</h2>
       <p className="mt-1 text-sm text-ink-muted">{p.skillBankText}</p>
-      <ul className="mt-4 flex flex-wrap gap-2">
-        {skills.map((s) => (
-          <li key={s.id} className="badge bg-slate-100 py-1 text-ink-soft">
-            {s.name}{s.level ? ` · ${s.level}` : ""}
-            <button onClick={() => remove(s.id)} aria-label={`${t.common.remove} ${s.name}`} className="ml-1 text-ink-muted hover:text-red-700">
-              <X className="h-3 w-3" />
-            </button>
-          </li>
-        ))}
-      </ul>
+      {skills.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {skills.map((s) => (
+            <li key={s.id} className="inline-flex items-center rounded-lg border border-line bg-slate-50 pl-2.5 text-sm text-ink-soft">
+              {s.name}{s.level ? ` · ${s.level}` : ""}
+              <button onClick={() => remove(s.id)} aria-label={`${t.common.remove} ${s.name}`} className="grid h-9 w-8 place-items-center text-ink-muted transition-colors hover:text-missing">
+                <X aria-hidden className="h-3.5 w-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <form onSubmit={add} className="mt-4 flex flex-wrap items-end gap-2">
         <div className="min-w-[160px] flex-1">
           <label className="label" htmlFor="sk-name">{p.skillName}</label>
           <input id="sk-name" className="input" value={name} maxLength={80} required onChange={(e) => setName(e.target.value)} />
         </div>
-        <div className="w-40">
+        <div className="min-w-[120px] flex-1 sm:max-w-40">
           <label className="label" htmlFor="sk-level">{p.skillLevel}</label>
           <input id="sk-level" className="input" value={level} maxLength={40} onChange={(e) => setLevel(e.target.value)} />
         </div>
-        <button className="btn-secondary"><Plus className="h-4 w-4" /> {p.addSkill}</button>
+        <button className="btn-secondary"><Plus aria-hidden className="h-4 w-4" /> {p.addSkill}</button>
       </form>
       {error && <div className="mt-3"><Alert tone="error">{error}</Alert></div>}
     </section>

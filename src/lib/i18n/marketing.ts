@@ -6,7 +6,7 @@ export interface LegalSection {
 }
 
 const en = {
-  nav: { pricing: "Pricing", faq: "FAQ", how: "How it works", login: "Log in", start: "Start free" },
+  nav: { result: "Result", pricing: "Pricing", faq: "FAQ", how: "How it works", login: "Log in", start: "Start free" },
   hero: {
     eyebrow: "CV analysis for tech, graduates and jobs in Brazil or abroad",
     title: "Your CV, aligned with the right job.",
@@ -17,6 +17,7 @@ const en = {
     note: "First analysis free. No card required.",
   },
   demo: {
+    example: "Illustrative example",
     title: "See the analysis flow",
     subtitle: "A simplified example of what you get for every job.",
     cvLabel: "Your CV",
@@ -59,6 +60,32 @@ const en = {
     confirmTag: "Confirm before adding",
     confirmText:
       "The job asks for Docker, which is not identified in your CV. If you really have this experience, describe where and how you used it. Otherwise, leave it out — we never add it for you.",
+  },
+  principles: [
+    { title: "Evidence, not opinion", text: "Each result quotes the line of your CV that supports it." },
+    { title: "Nothing is invented", text: "Suggestions that add facts not in your CV are discarded." },
+    { title: "You decide", text: "Accept, edit or reject every change. Your original stays intact." },
+  ],
+  preview: {
+    title: "A structured result, not a chat reply",
+    subtitle: "This is the result screen of the product: an index with its meaning, the strengths, what is missing and the changes you can accept.",
+    label: "Illustrative example",
+    note: "Fictional data, shown to present the interface. It is not a real result and does not predict any selection process.",
+    strengths: [
+      { label: "Node.js and PostgreSQL", must: true },
+      { label: "English C1", must: true },
+      { label: "TypeScript", must: false },
+      { label: "Git", must: false },
+    ],
+    gaps: [
+      { label: "Experience with Docker", must: true, status: "not_found" },
+      { label: "3+ years with React", must: true, status: "partial" },
+    ],
+    suggestion: {
+      rationale: "Brings to the top of your summary terms the job asks for and that are already in your CV.",
+      current: "Developer focused on web applications and APIs.",
+      suggested: "Full stack developer with experience in React, Node.js and PostgreSQL, focused on web applications and APIs.",
+    },
   },
   how: {
     title: "How it works",
@@ -123,6 +150,7 @@ const en = {
     button: "Analyze my first CV",
   },
   footer: {
+    product: "Product", legalTitle: "Legal", contact: "Contact",
     tagline: "Honest, evidence-based CV tailoring.",
     privacy: "Privacy policy",
     terms: "Terms of use",
@@ -130,6 +158,7 @@ const en = {
     rights: "All rights reserved.",
   },
   legal: {
+    contents: "On this page",
     updated: "Last updated",
   },
   legalNotice: {
@@ -309,7 +338,7 @@ const en = {
 export type MarketingDict = typeof en;
 
 const pt: MarketingDict = {
-  nav: { pricing: "Preços", faq: "Dúvidas", how: "Como funciona", login: "Entrar", start: "Começar grátis" },
+  nav: { result: "Resultado", pricing: "Preços", faq: "Dúvidas", how: "Como funciona", login: "Entrar", start: "Começar grátis" },
   hero: {
     eyebrow: "Análise de currículo para tecnologia, recém-formados e vagas no Brasil ou no exterior",
     title: "Seu currículo, alinhado à vaga certa.",
@@ -320,6 +349,7 @@ const pt: MarketingDict = {
     note: "Primeira análise grátis. Sem cartão.",
   },
   demo: {
+    example: "Exemplo ilustrativo",
     title: "Veja o fluxo da análise",
     subtitle: "Um exemplo simplificado do que você recebe para cada vaga.",
     cvLabel: "Seu currículo",
@@ -362,6 +392,32 @@ const pt: MarketingDict = {
     confirmTag: "Confirme antes de incluir",
     confirmText:
       "A vaga pede Docker, que não foi identificado no seu currículo. Se você realmente tem essa experiência, descreva onde e como usou. Caso contrário, não inclua — nunca adicionamos isso por você.",
+  },
+  principles: [
+    { title: "Evidência, não opinião", text: "Cada resultado cita o trecho do seu currículo que o sustenta." },
+    { title: "Nada é inventado", text: "Sugestões que acrescentam fatos fora do seu currículo são descartadas." },
+    { title: "Você decide", text: "Aceite, edite ou rejeite cada mudança. Seu original permanece intacto." },
+  ],
+  preview: {
+    title: "Um resultado estruturado, não uma resposta de chat",
+    subtitle: "Esta é a tela de resultado do produto: um índice com seu significado, os pontos fortes, o que falta e as mudanças que você pode aceitar.",
+    label: "Exemplo ilustrativo",
+    note: "Dados fictícios, usados para apresentar a interface. Não é um resultado real e não prevê nenhum processo seletivo.",
+    strengths: [
+      { label: "Node.js e PostgreSQL", must: true },
+      { label: "Inglês C1", must: true },
+      { label: "TypeScript", must: false },
+      { label: "Git", must: false },
+    ],
+    gaps: [
+      { label: "Experiência com Docker", must: true, status: "not_found" },
+      { label: "3+ anos com React", must: true, status: "partial" },
+    ],
+    suggestion: {
+      rationale: "Traz para o início do resumo termos que a vaga pede e que já estão no seu currículo.",
+      current: "Desenvolvedora focada em aplicações web e APIs.",
+      suggested: "Desenvolvedora full stack com experiência em React, Node.js e PostgreSQL, focada em aplicações web e APIs.",
+    },
   },
   how: {
     title: "Como funciona",
@@ -426,6 +482,7 @@ const pt: MarketingDict = {
     button: "Analisar meu primeiro currículo",
   },
   footer: {
+    product: "Produto", legalTitle: "Legal", contact: "Contato",
     tagline: "Adaptação de currículo honesta e baseada em evidências.",
     privacy: "Política de privacidade",
     terms: "Termos de uso",
@@ -433,6 +490,7 @@ const pt: MarketingDict = {
     rights: "Todos os direitos reservados.",
   },
   legal: {
+    contents: "Nesta página",
     updated: "Última atualização",
   },
   legalNotice: {
@@ -610,7 +668,7 @@ const pt: MarketingDict = {
 };
 
 const es: MarketingDict = {
-  nav: { pricing: "Precios", faq: "Preguntas", how: "Cómo funciona", login: "Iniciar sesión", start: "Empezar gratis" },
+  nav: { result: "Resultado", pricing: "Precios", faq: "Preguntas", how: "Cómo funciona", login: "Iniciar sesión", start: "Empezar gratis" },
   hero: {
     eyebrow: "Análisis de currículum para tecnología, recién egresados y ofertas en Brasil o en el extranjero",
     title: "Tu currículum, alineado con la oferta adecuada.",
@@ -621,6 +679,7 @@ const es: MarketingDict = {
     note: "Primer análisis gratis. Sin tarjeta.",
   },
   demo: {
+    example: "Ejemplo ilustrativo",
     title: "Mira el flujo del análisis",
     subtitle: "Un ejemplo simplificado de lo que obtienes para cada oferta.",
     cvLabel: "Tu currículum",
@@ -663,6 +722,32 @@ const es: MarketingDict = {
     confirmTag: "Confirma antes de añadir",
     confirmText:
       "La oferta pide Docker, que no se identifica en tu currículum. Si de verdad tienes esa experiencia, describe dónde y cómo la usaste. Si no, no la incluyas — nunca la añadimos por ti.",
+  },
+  principles: [
+    { title: "Evidencia, no opinión", text: "Cada resultado cita la línea de tu currículum que lo respalda." },
+    { title: "Nada se inventa", text: "Las sugerencias que añaden hechos ajenos a tu currículum se descartan." },
+    { title: "Tú decides", text: "Acepta, edita o rechaza cada cambio. Tu original se mantiene intacto." },
+  ],
+  preview: {
+    title: "Un resultado estructurado, no una respuesta de chat",
+    subtitle: "Esta es la pantalla de resultado del producto: un índice con su significado, los puntos fuertes, lo que falta y los cambios que puedes aceptar.",
+    label: "Ejemplo ilustrativo",
+    note: "Datos ficticios, usados para presentar la interfaz. No es un resultado real y no predice ningún proceso de selección.",
+    strengths: [
+      { label: "Node.js y PostgreSQL", must: true },
+      { label: "Inglés C1", must: true },
+      { label: "TypeScript", must: false },
+      { label: "Git", must: false },
+    ],
+    gaps: [
+      { label: "Experiencia con Docker", must: true, status: "not_found" },
+      { label: "3+ años con React", must: true, status: "partial" },
+    ],
+    suggestion: {
+      rationale: "Lleva al inicio del resumen términos que la oferta pide y que ya están en tu currículum.",
+      current: "Desarrolladora enfocada en aplicaciones web y APIs.",
+      suggested: "Desarrolladora full stack con experiencia en React, Node.js y PostgreSQL, enfocada en aplicaciones web y APIs.",
+    },
   },
   how: {
     title: "Cómo funciona",
@@ -727,6 +812,7 @@ const es: MarketingDict = {
     button: "Analizar mi primer currículum",
   },
   footer: {
+    product: "Producto", legalTitle: "Legal", contact: "Contacto",
     tagline: "Adaptación de currículum honesta y basada en evidencias.",
     privacy: "Política de privacidad",
     terms: "Términos de uso",
@@ -734,6 +820,7 @@ const es: MarketingDict = {
     rights: "Todos los derechos reservados.",
   },
   legal: {
+    contents: "En esta página",
     updated: "Última actualización",
   },
   legalNotice: {

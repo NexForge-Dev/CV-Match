@@ -24,24 +24,38 @@ export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; tit
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <MarketingHeader t={t} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:py-14">
-        <h1 className="text-3xl font-bold tracking-tight text-ink">{title}</h1>
-        <p className="mt-2 text-sm text-ink-muted">
-          {t.legal.updated}: {LEGAL_LAST_UPDATED}
-        </p>
-        <p className="mt-6 text-ink-soft">{fillLegal(intro, op)}</p>
-        <div className="mt-8 space-y-8">
-          {sections.map((s) => (
-            <section key={s.title}>
-              <h2 className="text-lg font-semibold text-ink">{s.title}</h2>
-              <div className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
-                {s.paragraphs.map((p) => (
-                  <Paragraph key={p} text={fillLegal(p, op)} email={op.email} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+      <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-10 px-4 py-10 sm:py-14 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <nav aria-label={t.legal.contents} className="hidden lg:block">
+          <div className="sticky top-20">
+            <p className="eyebrow mb-2">{t.legal.contents}</p>
+            <ul className="space-y-1.5 text-sm">
+              {sections.map((s, i) => (
+                <li key={s.title}>
+                  <a href={`#s${i + 1}`} className="text-ink-muted transition-colors hover:text-ink">{s.title}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </nav>
+        <article className="min-w-0 max-w-3xl">
+          <h1 className="text-3xl font-bold tracking-tight text-ink">{title}</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            {t.legal.updated}: <span className="readout">{LEGAL_LAST_UPDATED}</span>
+          </p>
+          <p className="mt-6 leading-relaxed text-ink-soft">{fillLegal(intro, op)}</p>
+          <div className="mt-8 space-y-8">
+            {sections.map((s, i) => (
+              <section key={s.title} id={`s${i + 1}`} className="scroll-mt-20">
+                <h2 className="text-lg font-semibold text-ink">{s.title}</h2>
+                <div className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
+                  {s.paragraphs.map((p) => (
+                    <Paragraph key={p} text={fillLegal(p, op)} email={op.email} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </article>
       </main>
       <MarketingFooter t={t} />
     </div>

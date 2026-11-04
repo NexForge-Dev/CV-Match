@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { FileText, PlusCircle } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
@@ -21,23 +21,28 @@ export default async function ResumesPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title={t.resumes.title} subtitle={t.resumes.subtitle} actions={<Link href="/new" className="btn-primary"><PlusCircle className="h-4 w-4" /> {t.nav.newAnalysis}</Link>} />
+      <PageHeader title={t.resumes.title} subtitle={t.resumes.subtitle} actions={<Link href="/new" className="btn-primary"><Plus aria-hidden className="h-4 w-4" /> {t.nav.newAnalysis}</Link>} />
       {resumes?.length ? (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {resumes.map((r) => {
             const versions = (r.resume_versions as { count: number }[] | null)?.[0]?.count ?? 0;
             const analyses = (r.analyses as { count: number }[] | null)?.[0]?.count ?? 0;
             return (
               <li key={r.id}>
-                <Link href={`/resumes/${r.id}`} className="card block p-5 transition hover:border-brand-300">
+                <Link href={`/resumes/${r.id}`} className="card-interactive block p-5">
                   <div className="flex items-start gap-3">
-                    <FileText className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600">
+                      <FileText aria-hidden className="h-5 w-5" />
+                    </span>
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{r.title}</p>
-                      <p className="mt-1 text-xs text-ink-muted">
+                      <p className="truncate font-semibold text-ink">{r.title}</p>
+                      <p className="mt-0.5 text-xs text-ink-muted">
                         {t.cvLanguage[r.language as "pt" | "es" | "en"]} · {t.templates[r.template as "classic" | "modern"]} · {formatDate(r.updated_at, locale)}
                       </p>
-                      <p className="mt-2 text-xs text-ink-soft">{t.resumes.versions}: {versions} · {t.nav.analyses}: {analyses}</p>
+                      <p className="mt-3 flex flex-wrap gap-1.5">
+                        <span className="tag">{t.resumes.versions}: {versions}</span>
+                        <span className="tag">{t.nav.analyses}: {analyses}</span>
+                      </p>
                     </div>
                   </div>
                 </Link>
@@ -46,7 +51,7 @@ export default async function ResumesPage() {
           })}
         </ul>
       ) : (
-        <EmptyState title={t.dashboard.noCvs} action={<Link href="/new" className="btn-primary btn-sm">{t.dashboard.start}</Link>} />
+        <EmptyState icon={FileText} title={t.dashboard.noCvs} action={<Link href="/new" className="btn-primary btn-sm">{t.dashboard.start}</Link>} />
       )}
     </div>
   );

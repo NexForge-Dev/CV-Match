@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ExternalLink } from "lucide-react";
+import { Briefcase, ExternalLink } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
@@ -25,40 +25,38 @@ export default async function JobsPage() {
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t.jobs.title} subtitle={t.jobs.subtitle} />
       {data?.length ? (
-        <ul className="space-y-3">
+        <ul className="card divider-list">
           {data.map((j) => {
             const analyses = (j.analyses as { id: string }[] | null) ?? [];
             return (
-              <li key={j.id} className="card p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+              <li key={j.id} className="p-4 sm:px-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-semibold">{j.title || "—"}</p>
+                    <p className="font-semibold text-ink">{j.title || "—"}</p>
                     <p className="text-sm text-ink-muted">{[j.company, j.location, formatDate(j.created_at, locale)].filter(Boolean).join(" · ")}</p>
-                    <p className="mt-1 text-xs text-ink-soft">{t.jobs.requirements((j.requirements as unknown[]).length)}</p>
+                    <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="tag">{t.jobs.requirements((j.requirements as unknown[]).length)}</span>
+                      {analyses.length > 0 && <span className="ml-1 text-ink-muted">{t.jobs.analyses}:</span>}
+                      {analyses.map((a, i) => (
+                        <Link key={a.id} href={`/analyses/${a.id}`} className="link readout inline-flex min-h-6 items-center">#{i + 1}</Link>
+                      ))}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
                     {j.url && (
                       <a href={j.url} target="_blank" rel="noopener noreferrer nofollow" className="btn-secondary btn-sm">
-                        <ExternalLink className="h-3.5 w-3.5" /> {t.jobs.viewAd}
+                        <ExternalLink aria-hidden className="h-3.5 w-3.5" /> {t.jobs.viewAd}
                       </a>
                     )}
                     <DeleteButton url={`/api/jobs/${j.id}`} />
                   </div>
                 </div>
-                {analyses.length > 0 && (
-                  <p className="mt-2 text-xs">
-                    {t.jobs.analyses}:{" "}
-                    {analyses.map((a, i) => (
-                      <Link key={a.id} href={`/analyses/${a.id}`} className="link mr-2">#{i + 1}</Link>
-                    ))}
-                  </p>
-                )}
               </li>
             );
           })}
         </ul>
       ) : (
-        <EmptyState title={t.dashboard.noJobs} />
+        <EmptyState icon={Briefcase} title={t.dashboard.noJobs} text={t.jobs.subtitle} action={<Link href="/new" className="btn-primary btn-sm">{t.dashboard.start}</Link>} />
       )}
     </div>
   );

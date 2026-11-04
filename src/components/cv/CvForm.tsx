@@ -59,7 +59,7 @@ function ItemControls({ index, total, onMove, onRemove }: { index: number; total
       <button type="button" className="btn-ghost btn-sm" disabled={index === total - 1} onClick={() => onMove(index + 1)} aria-label={t.cvForm.moveDown}>
         <ArrowDown className="h-3.5 w-3.5" />
       </button>
-      <button type="button" className="btn-ghost btn-sm text-red-700" onClick={onRemove} aria-label={t.common.remove}>
+      <button type="button" className="btn-ghost btn-sm text-missing-ink" onClick={onRemove} aria-label={t.common.remove}>
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -76,7 +76,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
   return (
     <div className="space-y-8" key={formKey}>
       <section>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">{f.contact}</h3>
+        <h3 className="eyebrow mb-3">{f.contact}</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="c-name" label={f.fullName} value={value.contact.fullName} onChange={(v) => setContact("fullName", v)} />
           <Field id="c-headline" label={f.headline} value={value.contact.headline} onChange={(v) => setContact("headline", v)} />
@@ -92,12 +92,12 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">{f.experience}</h3>
+        <h3 className="eyebrow mb-3">{f.experience}</h3>
         <div className="space-y-4">
           {value.experiences.map((e, i) => {
             const update = (patch: Partial<typeof e>) => set("experiences", value.experiences.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             return (
-              <div key={e.id} className="rounded-lg border border-slate-200 p-4">
+              <div key={e.id} className="rounded-lg border border-line bg-slate-50/60 p-4">
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.experiences.length} onMove={(to) => set("experiences", move(value.experiences, i, to))} onRemove={() => set("experiences", value.experiences.filter((_, j) => j !== i))} />
                 </div>
@@ -125,12 +125,12 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">{f.projects}</h3>
+        <h3 className="eyebrow mb-3">{f.projects}</h3>
         <div className="space-y-4">
           {value.projects.map((p, i) => {
             const update = (patch: Partial<typeof p>) => set("projects", value.projects.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             return (
-              <div key={p.id} className="rounded-lg border border-slate-200 p-4">
+              <div key={p.id} className="rounded-lg border border-line bg-slate-50/60 p-4">
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.projects.length} onMove={(to) => set("projects", move(value.projects, i, to))} onRemove={() => set("projects", value.projects.filter((_, j) => j !== i))} />
                 </div>
@@ -152,12 +152,12 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink-muted">{f.education}</h3>
+        <h3 className="eyebrow mb-3">{f.education}</h3>
         <div className="space-y-4">
           {value.education.map((ed, i) => {
             const update = (patch: Partial<typeof ed>) => set("education", value.education.map((x, j) => (j === i ? { ...x, ...patch } : x)));
             return (
-              <div key={ed.id} className="rounded-lg border border-slate-200 p-4">
+              <div key={ed.id} className="rounded-lg border border-line bg-slate-50/60 p-4">
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.education.length} onMove={(to) => set("education", move(value.education, i, to))} onRemove={() => set("education", value.education.filter((_, j) => j !== i))} />
                 </div>

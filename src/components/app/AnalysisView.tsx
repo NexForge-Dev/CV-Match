@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, CircleDashed, Copy, ExternalLink, HelpCircle, Loader2, Lock, MinusCircle } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown, Copy, ExternalLink, FileText, Info, Loader2, Lock, SearchX, ShieldCheck } from "lucide-react";
 import type { MatchResult, MatchStatus, ScoreBreakdown } from "@/lib/analysis/match";
 import type { Requirement } from "@/lib/analysis/requirements";
+import { scoreBand } from "@/lib/analysis/scoreBand";
 import type { PlanFeatures } from "@/lib/billing/plans";
 import { api, errorMessage } from "@/lib/client/api";
 import { formatDate } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/client";
-import { Alert, ScoreRing } from "@/components/ui";
+import { Alert, CardHeader, ScoreRing, ScoreScale } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
+import { STATUS_STYLE, StatusBadge } from "@/components/StatusBadge";
 
 export type SuggestionRow = {
   id: string;
@@ -56,12 +58,8 @@ type Props = {
   extrasFallback?: { letter?: boolean; interview?: boolean };
 };
 
-const STATUS_STYLE: Record<MatchStatus, { cls: string; Icon: typeof CheckCircle2 }> = {
-  found: { cls: "bg-emerald-50 text-emerald-800 border-emerald-200", Icon: CheckCircle2 },
-  partial: { cls: "bg-amber-50 text-amber-800 border-amber-200", Icon: CircleDashed },
-  not_found: { cls: "bg-red-50 text-red-800 border-red-200", Icon: MinusCircle },
-  ambiguous: { cls: "bg-slate-100 text-slate-700 border-slate-200", Icon: HelpCircle },
-};
+const STATUS_ORDER: MatchStatus[] = ["found", "partial", "not_found", "ambiguous"];
+const OVERVIEW_ITEMS = 5;
 
 export function AnalysisView({ initialTab, analysis, suggestions: initialSuggestions, letter: initialLetter, interview: initialInterview, extrasFallback = {} }: Props) {
   const { t, locale } = useI18n();
@@ -79,12 +77,32 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
   const [copied, setCopied] = useState(false);
 
   const resultById = useMemo(() => new Map(analysis.results.map((r) => [r.requirementId, r])), [analysis.results]);
-  const rows = analysis.requirements
+  const evaluated = analysis.requirements
     .map((req) => ({ req, res: resultById.get(req.id) }))
-    .filter((r): r is { req: Requirement; res: MatchResult } => Boolean(r.res))
-    .filter((r) => filter === "all" || r.res.status === filter);
+    .filter((r): r is { req: Requirement; res: MatchResult } => Boolean(r.res));
+  const rows = evaluated.filter((r) => filter === "all" || r.res.status === filter);
+  const mustFirst = (x: { req: Requirement }, y: { req: Requirement }) => Number(y.req.importance === "must") - Number(x.req.importance === "must");
+  const strengths = evaluated.filter((r) => r.res.status === "found").sort(mustFirst);
+  const gaps = evaluated
+    .filter((r) => r.res.status === "not_found" || r.res.status === "partial")
+    .sort((x, y) => mustFirst(x, y) || Number(y.res.status === "not_found") - Number(x.res.status === "not_found"));
   const b = analysis.breakdown;
+  const band = scoreBand(analysis.score);
+  const reviewable = suggestions.filter((s) => s.kind !== "gap_answer");
+  const pendingCount = reviewable.filter((s) => s.status === "pending").length;
   const acceptedCount = suggestions.filter((s) => s.status === "accepted" && s.kind !== "gap_answer").length;
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  function showRequirements(status: MatchStatus | "all") {
+    setFilter(status);
+    setTab("requirements");
+    tabsRef.current?.scrollIntoView({ block: "start" });
+  }
+
+  function showSuggestions() {
+    setTab("suggestions");
+    tabsRef.current?.scrollIntoView({ block: "start" });
+  }
 
   async function patch(id: string, body: Record<string, unknown>) {
     const prev = suggestions;
@@ -142,51 +160,127 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm text-ink-muted">{a.title} · {formatDate(analysis.createdAt, locale)}</p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{analysis.job.title || analysis.job.company || "—"}</h1>
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="min-w-0">
+          <Link href="/analyses" className="text-sm text-ink-muted hover:text-ink">← {t.nav.analyses}</Link>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink">{analysis.job.title || analysis.job.company || "—"}</h1>
           <p className="mt-1 text-sm text-ink-soft">
             {[analysis.job.company, analysis.job.location].filter(Boolean).join(" · ")}
             {analysis.job.url && (
-              <a href={analysis.job.url} target="_blank" rel="noopener noreferrer nofollow" className="link ml-2 inline-flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />
+              <a href={analysis.job.url} target="_blank" rel="noopener noreferrer nofollow" aria-label={t.jobs.viewAd} className="link ml-2 inline-flex items-center gap-1 align-middle">
+                <ExternalLink aria-hidden className="h-3.5 w-3.5" />
               </a>
             )}
           </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {a.cv}: <Link className="link" href={`/resumes/${analysis.resumeId}`}>{analysis.resumeTitle} · v{analysis.versionNumber}</Link> · {a.provider[analysis.provider] ?? analysis.provider}
+          <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+            <span className="tag">{formatDate(analysis.createdAt, locale)}</span>
+            <Link className="link inline-flex items-center gap-1" href={`/resumes/${analysis.resumeId}`}>
+              <FileText aria-hidden className="h-3.5 w-3.5" /> {analysis.resumeTitle} · v{analysis.versionNumber}
+            </Link>
+            <span>{a.provider[analysis.provider] ?? analysis.provider}</span>
           </p>
         </div>
-        <DeleteButton url={`/api/analyses/${analysis.id}`} label={a.deleteAnalysis} redirectTo="/analyses" />
+        <div className="shrink-0">
+          <DeleteButton url={`/api/analyses/${analysis.id}`} label={a.deleteAnalysis} redirectTo="/analyses" />
+        </div>
       </div>
 
       {analysis.provider === "heuristic_fallback" && <div className="mb-4"><Alert tone="warn">{a.fallbackNotice}</Alert></div>}
-      <section className="card mb-6 grid gap-6 p-4 sm:p-6 md:grid-cols-[auto_1fr]">
-        <div className="flex flex-col items-center">
-          <ScoreRing score={analysis.score} size={120} />
-          <p className="mt-2 text-sm font-semibold">{a.scoreLabel}</p>
+
+      {/* Result overview: what the index says, then how the requirements add up to it. */}
+      <section className="card mb-4 grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" aria-label={a.title}>
+        <div className="border-b border-slate-100 p-5 sm:p-6 lg:border-b-0 lg:border-r">
+          <p className="eyebrow">{a.scoreLabel}</p>
+          <div className="mt-3 flex items-center gap-5">
+            <ScoreRing score={analysis.score} size={112} label={a.scoreLabel} />
+            <div className="min-w-0">
+              <p className="text-lg font-semibold text-ink">{a.bands[band].label}</p>
+              <p className="mt-1 text-sm text-ink-soft">{a.bands[band].text}</p>
+            </div>
+          </div>
+          <div className="mt-5"><ScoreScale score={analysis.score} /></div>
         </div>
-        <div className="space-y-3 text-sm">
-          <p className="text-ink-soft">{a.counts(b.counts.found, b.counts.partial, b.counts.not_found, b.counts.ambiguous)}</p>
-          {b.mustTotal > 0 && <p className="font-medium">{a.mustSummary(b.mustFound, b.mustTotal)}</p>}
-          <Alert tone="info">{a.scoreDisclaimer}</Alert>
-          <details className="text-ink-soft">
-            <summary className="cursor-pointer font-medium text-brand-700">{a.howCalculated}</summary>
-            <p className="mt-2">{a.formula}</p>
+
+        <div className="p-5 sm:p-6">
+          <p className="eyebrow">{a.coverage}</p>
+          <div className="mt-3 flex h-3 gap-0.5" role="img" aria-label={a.counts(b.counts.found, b.counts.partial, b.counts.not_found, b.counts.ambiguous)}>
+            {STATUS_ORDER.flatMap((status) =>
+              Array.from({ length: b.counts[status] }, (_, i) => <span key={`${status}-${i}`} className={`min-w-0 flex-1 first:rounded-l-full last:rounded-r-full ${STATUS_STYLE[status].solid}`} />),
+            )}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 xl:grid-cols-4">
+            {STATUS_ORDER.map((status) => {
+              const { Icon, text } = STATUS_STYLE[status];
+              return (
+                <button key={status} onClick={() => showRequirements(status)} className="rounded-lg border border-line px-3 py-2 text-left transition-colors hover:border-line-strong hover:bg-slate-50">
+                  <span className="flex items-center gap-1.5">
+                    <Icon aria-hidden className={`h-3.5 w-3.5 ${text}`} />
+                    <span className="readout text-lg font-semibold text-ink">{b.counts[status]}</span>
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-snug text-ink-muted">{a.status[status]}</span>
+                </button>
+              );
+            })}
+          </div>
+          {b.mustTotal > 0 && (
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <p className="font-medium text-ink">{a.mustCoverage}</p>
+                <p className="readout shrink-0 font-semibold text-ink">{b.mustFound}/{b.mustTotal}</p>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-full rounded-full bg-brand-600" style={{ width: `${Math.round((b.mustFound / b.mustTotal) * 100)}%` }} />
+              </div>
+              <p className="mt-1.5 text-xs text-ink-muted">{a.mustSummary(b.mustFound, b.mustTotal)}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-ink-soft sm:px-6 lg:col-span-2 lg:rounded-b-xl">
+          <p className="flex gap-2"><Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /> {a.scoreDisclaimer}</p>
+          <details className="group mt-1 pl-6">
+            <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-medium text-brand-700">
+              {a.howCalculated}
+              <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <p className="mt-1 max-w-3xl">{a.formula}</p>
           </details>
         </div>
       </section>
 
-      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <section className="card flex min-w-0 flex-col">
+          <CardHeader icon={ShieldCheck} title={a.strengths} action={strengths.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("found")}>{a.seeAll}</button> : undefined} />
+          {strengths.length ? (
+            <ul className="divider-list flex-1">
+              {strengths.slice(0, OVERVIEW_ITEMS).map(({ req }) => <OverviewRow key={req.id} req={req} status="found" />)}
+            </ul>
+          ) : (
+            <p className="flex-1 px-5 py-6 text-sm text-ink-muted">{a.noStrengths}</p>
+          )}
+        </section>
+        <section className="card flex min-w-0 flex-col">
+          <CardHeader icon={SearchX} title={a.gaps} action={gaps.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("not_found")}>{a.seeAll}</button> : undefined} />
+          {gaps.length ? (
+            <ul className="divider-list flex-1">
+              {gaps.slice(0, OVERVIEW_ITEMS).map(({ req, res }) => <OverviewRow key={req.id} req={req} status={res.status} />)}
+            </ul>
+          ) : (
+            <p className="flex-1 px-5 py-6 text-sm text-ink-muted">{a.noGaps}</p>
+          )}
+          {pendingCount > 0 && (
+            <div className="border-t border-slate-100 p-3">
+              <button className="btn-primary w-full" onClick={showSuggestions}>
+                {a.reviewImprovements(pendingCount)} <ArrowRight aria-hidden className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div ref={tabsRef} className="tabs mb-5 scroll-mt-16 lg:scroll-mt-4" role="tablist">
         {tabs.map((x) => (
-          <button
-            key={x.id}
-            role="tab"
-            aria-selected={tab === x.id}
-            onClick={() => setTab(x.id)}
-            className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${tab === x.id ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}
-          >
+          <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => setTab(x.id)} className="tab">
             {x.label}
           </button>
         ))}
@@ -204,51 +298,55 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
       {tab === "requirements" && (
         <section>
           <div className="mb-3 flex flex-wrap gap-2">
-            {(["all", "found", "partial", "not_found", "ambiguous"] as const).map((s) => (
-              <button key={s} className={filter === s ? "btn-primary btn-sm" : "btn-secondary btn-sm"} onClick={() => setFilter(s)}>
-                {s === "all" ? `${t.common.all} (${analysis.requirements.length})` : a.status[s]}
+            {(["all", ...STATUS_ORDER] as const).map((s) => (
+              <button key={s} aria-pressed={filter === s} className="chip" onClick={() => setFilter(s)}>
+                {s === "all" ? t.common.all : a.status[s]}
+                <span className="readout text-ink-muted">{s === "all" ? analysis.requirements.length : b.counts[s]}</span>
               </button>
             ))}
           </div>
-          <p className="mb-4 text-xs text-ink-muted">{a.absenceNote}</p>
-          <ul className="space-y-3">
+          <p className="mb-4 max-w-3xl text-xs text-ink-muted">{a.absenceNote}</p>
+          <ul className="card divider-list">
             {rows.map(({ req, res }) => {
               const style = STATUS_STYLE[res.status];
               return (
-                <li key={req.id} className="card p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-medium">{req.label}</p>
-                      {req.sourceText !== req.label && <p className="mt-0.5 text-xs text-ink-muted">“{req.sourceText}”</p>}
+                <li key={req.id} className="flex gap-3 p-4 sm:p-5">
+                  <style.Icon aria-hidden className={`mt-0.5 h-5 w-5 shrink-0 ${style.text}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink">{req.label}</p>
+                        {req.sourceText !== req.label && <p className="mt-0.5 text-xs text-ink-muted">“{req.sourceText}”</p>}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-1">
+                        <span className={`badge border ${req.importance === "must" ? "border-line-strong bg-white text-ink" : "border-line bg-white text-ink-muted"}`}>{req.importance === "must" ? a.must : a.nice}</span>
+                        <StatusBadge status={res.status} label={a.status[res.status]} />
+                      </div>
                     </div>
-                    <div className="flex shrink-0 flex-wrap gap-1">
-                      <span className={`badge border ${req.importance === "must" ? "border-ink/20 bg-white text-ink" : "border-slate-200 bg-white text-ink-muted"}`}>{req.importance === "must" ? a.must : a.nice}</span>
-                      <span className={`badge border ${style.cls}`}>
-                        <style.Icon className="h-3.5 w-3.5" /> {a.status[res.status]}
-                      </span>
-                    </div>
+                    {res.notes.length > 0 && (
+                      <ul className="mt-2 space-y-0.5 text-xs text-ink-soft">
+                        {res.notes.map((n) => (
+                          <li key={n} className="flex gap-1"><AlertCircle aria-hidden className="mt-px h-3 w-3 shrink-0" /> {a.notes[n] ?? n}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {res.relatedSkills.length > 0 && <p className="mt-1 text-xs text-ink-soft">{a.related}: {res.relatedSkills.join(", ")}</p>}
+                    {res.evidence.length > 0 && (
+                      <div className="mt-3">
+                        <p className="eyebrow mb-1.5">
+                          {res.notes.includes("negated_context") || res.notes.includes("learning_context") ? a.mentionInCv : a.evidence}
+                        </p>
+                        <div className="space-y-1.5">
+                          {res.evidence.map((ev, i) => (
+                            <blockquote key={i} className="well flex flex-col items-start gap-1 py-2 text-sm text-ink-soft sm:flex-row sm:gap-2">
+                              <span className="tag shrink-0 bg-white">{a.sections[ev.section] ?? ev.section}</span>
+                              <span className="min-w-0">{ev.quote}</span>
+                            </blockquote>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {res.notes.length > 0 && (
-                    <ul className="mt-2 space-y-0.5 text-xs text-ink-soft">
-                      {res.notes.map((n) => (
-                        <li key={n} className="flex items-center gap-1"><AlertCircle className="h-3 w-3" /> {a.notes[n] ?? n}</li>
-                      ))}
-                    </ul>
-                  )}
-                  {res.relatedSkills.length > 0 && <p className="mt-1 text-xs text-ink-soft">{a.related}: {res.relatedSkills.join(", ")}</p>}
-                  {res.evidence.length > 0 && (
-                    <div className="mt-3 space-y-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                        {res.notes.includes("negated_context") || res.notes.includes("learning_context") ? a.mentionInCv : a.evidence}
-                      </p>
-                      {res.evidence.map((ev, i) => (
-                        <blockquote key={i} className="border-l-2 border-brand-200 pl-3 text-sm text-ink-soft">
-                          <span className="mr-1 text-xs text-ink-muted">[{a.sections[ev.section] ?? ev.section}]</span>
-                          {ev.quote}
-                        </blockquote>
-                      ))}
-                    </div>
-                  )}
                 </li>
               );
             })}
@@ -259,10 +357,10 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
       {tab === "suggestions" && (
         <section>
           <div className="mb-4">
-            <h2 className="text-lg font-semibold">{a.suggestionsTitle}</h2>
-            <p className="text-sm text-ink-muted">{a.suggestionsText}</p>
+            <h2 className="text-lg font-semibold text-ink">{a.suggestionsTitle}</h2>
+            <p className="mt-0.5 max-w-3xl text-sm text-ink-muted">{a.suggestionsText}</p>
           </div>
-          <div className="mb-4 space-y-2">
+          <div className="mb-4 space-y-2 empty:hidden">
             {analysis.tier === "free" && (
               <Alert tone="info">
                 {a.freeLimit} <Link href="/billing" className="link">{t.nav.billing}</Link>
@@ -271,7 +369,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
             {analysis.dropped > 0 && <Alert tone="warn">{a.droppedNotice(analysis.dropped)}</Alert>}
           </div>
           {suggestions.length === 0 ? (
-            <p className="text-sm text-ink-muted">{a.noSuggestions}</p>
+            <p className="card px-5 py-8 text-center text-sm text-ink-muted">{a.noSuggestions}</p>
           ) : (
             <ul className="space-y-3">
               {suggestions.map((s) => (
@@ -279,9 +377,10 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
               ))}
             </ul>
           )}
-          <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50/95 pt-4 backdrop-blur">
-            <button className="btn-primary" disabled={acceptedCount === 0 || busy !== null} onClick={applyAccepted}>
-              {busy === "apply" && <Loader2 className="h-4 w-4 animate-spin" />}
+          <div className="safe-bottom sticky bottom-0 z-10 mt-4 flex flex-col gap-2 border-t border-line bg-slate-50 pt-3 sm:flex-row sm:items-center sm:justify-between">
+            {reviewable.length > 0 && <p className="readout text-xs text-ink-muted">{a.reviewed(reviewable.length - pendingCount, reviewable.length)}</p>}
+            <button className="btn-primary w-full sm:ml-auto sm:w-auto" disabled={acceptedCount === 0 || busy !== null} onClick={applyAccepted}>
+              {busy === "apply" && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
               {busy === "apply" ? a.applying : a.apply(acceptedCount)}
             </button>
           </div>
@@ -316,7 +415,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                   <Copy className="h-3.5 w-3.5" /> {copied ? a.copied : a.copy}
                 </button>
               </div>
-              <textarea className="input min-h-[420px] font-serif leading-relaxed sm:text-sm" value={letter} onChange={(e) => setLetter(e.target.value)} />
+              <textarea className="input min-h-[420px] leading-relaxed sm:text-sm" aria-label={a.tabs.letter} value={letter} onChange={(e) => setLetter(e.target.value)} />
             </div>
           )}
         </ExtraPanel>
@@ -334,18 +433,23 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           {interview && (
             <ol className="space-y-3">
               {interview.map((item, i) => (
-                <li key={i} className="card p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{item.requirement}</p>
-                  <p className="mt-1 font-medium">{item.question}</p>
-                  {item.evidence.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs text-ink-muted">{a.yourEvidence}</p>
-                      {item.evidence.map((e, j) => (
-                        <blockquote key={j} className="border-l-2 border-brand-200 pl-3 text-sm text-ink-soft">{e}</blockquote>
-                      ))}
-                    </div>
-                  )}
-                  <p className="mt-2 text-sm text-ink-soft"><strong>{a.tip}:</strong> {item.tip}</p>
+                <li key={i} className="card flex gap-3 p-4 sm:p-5">
+                  <span className="readout grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="eyebrow text-brand-700">{item.requirement}</p>
+                    <p className="mt-1 font-medium text-ink">{item.question}</p>
+                    {item.evidence.length > 0 && (
+                      <div className="mt-3">
+                        <p className="eyebrow mb-1.5">{a.yourEvidence}</p>
+                        <div className="space-y-1.5">
+                          {item.evidence.map((e, j) => (
+                            <blockquote key={j} className="well py-2 text-sm text-ink-soft">{e}</blockquote>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <p className="mt-3 text-sm text-ink-soft"><strong className="font-semibold text-ink">{a.tip}:</strong> {item.tip}</p>
+                  </div>
                 </li>
               ))}
             </ol>
@@ -361,9 +465,11 @@ function ExtraPanel({ locked, text, hasContent, busy, onGenerate, children }: { 
   const a = t.analysis;
   if (locked) {
     return (
-      <div className="card flex flex-col items-center p-10 text-center">
-        <Lock className="h-8 w-8 text-ink-muted" />
-        <p className="mt-3 font-medium">{a.locked}</p>
+      <div className="card flex flex-col items-center px-6 py-12 text-center">
+        <span className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-ink-muted">
+          <Lock aria-hidden className="h-5 w-5" />
+        </span>
+        <p className="mt-3 font-semibold text-ink">{a.locked}</p>
         <p className="mt-1 max-w-md text-sm text-ink-muted">{text}</p>
         <Link href="/billing" className="btn-primary mt-4">{t.nav.billing}</Link>
       </div>
@@ -372,7 +478,7 @@ function ExtraPanel({ locked, text, hasContent, busy, onGenerate, children }: { 
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-muted">{text}</p>
+        <p className="max-w-2xl text-sm text-ink-muted">{text}</p>
         <button className={hasContent ? "btn-secondary" : "btn-primary"} disabled={busy} onClick={onGenerate}>
           {busy && <Loader2 className="h-4 w-4 animate-spin" />}
           {busy ? a.generating : hasContent ? a.regenerate : a.generate}
@@ -380,6 +486,19 @@ function ExtraPanel({ locked, text, hasContent, busy, onGenerate, children }: { 
       </div>
       {children}
     </section>
+  );
+}
+
+function OverviewRow({ req, status }: { req: Requirement; status: MatchStatus }) {
+  const { t } = useI18n();
+  const { Icon, text } = STATUS_STYLE[status];
+  return (
+    <li className="flex items-center gap-2.5 px-5 py-2.5 text-sm">
+      <Icon aria-hidden className={`h-4 w-4 shrink-0 ${text}`} />
+      <span className="sr-only">{t.analysis.status[status]}:</span>
+      <span className="min-w-0 flex-1 truncate text-ink" title={req.label}>{req.label}</span>
+      <span className="shrink-0 text-xs text-ink-muted">{req.importance === "must" ? t.analysis.must : t.analysis.nice}</span>
+    </li>
   );
 }
 
@@ -394,22 +513,23 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
   const skill = s.target_ref?.skill ?? "";
 
   return (
-    <li className={`card p-4 ${s.status === "accepted" ? "ring-2 ring-emerald-300" : s.status === "rejected" ? "opacity-60" : ""}`}>
+    <li className={`card p-4 sm:p-5 ${s.status === "accepted" ? "border-found-line" : s.status === "rejected" ? "opacity-60" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="badge bg-brand-50 text-brand-700">{a.kinds[s.kind] ?? s.kind}</span>
-        {s.status !== "pending" && <span className="text-xs font-medium text-ink-muted">{s.status === "accepted" ? a.accepted : a.rejected}</span>}
+        {s.status === "accepted" && <span className="badge text-found-ink"><CheckCircle2 aria-hidden className="h-3.5 w-3.5" /> {a.accepted}</span>}
+        {s.status === "rejected" && <span className="text-xs font-medium text-ink-muted">{a.rejected}</span>}
       </div>
 
       {s.rationale && <p className="mt-2 text-sm text-ink-soft">{s.rationale}</p>}
-      {s.flags.includes("check_names") && <p className="mt-1 text-xs text-amber-700">{a.checkNames}</p>}
+      {s.flags.includes("check_names") && <p className="mt-1 text-xs font-medium text-partial-ink">{a.checkNames}</p>}
       {s.flags.includes("years_computed_from_dates") && <p className="mt-1 text-xs text-ink-muted">{a.yearsComputed}</p>}
 
       {advisory ? (
-        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">{s.suggested_text}</p>
+        <p className="well mt-3 text-sm text-ink">{s.suggested_text}</p>
       ) : isConfirm ? (
         <div className="mt-3 space-y-2">
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" className="mt-0.5" checked={s.confirmed_by_user} onChange={(e) => onPatch({ confirmedByUser: e.target.checked, ...(e.target.checked ? {} : { status: "pending" }) })} />
+          <label className="flex items-start gap-2.5 text-sm text-ink">
+            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={s.confirmed_by_user} onChange={(e) => onPatch({ confirmedByUser: e.target.checked, ...(e.target.checked ? {} : { status: "pending" }) })} />
             <span>{a.confirmLabel(skill)}</span>
           </label>
           {s.confirmed_by_user && (
@@ -417,6 +537,7 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
               className="input sm:text-sm"
               rows={2}
               placeholder={a.confirmPlaceholder}
+              aria-label={a.confirmPlaceholder}
               defaultValue={s.edited_text ?? ""}
               onBlur={(e) => onPatch({ editedText: e.target.value.trim() || null })}
               maxLength={600}
@@ -425,29 +546,29 @@ function SuggestionCard({ s, onPatch }: { s: SuggestionRow; onPatch: (body: Reco
         </div>
       ) : (
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{a.original}</p>
-            <p className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-ink-soft">{s.original_text || "—"}</p>
+          <div className="min-w-0">
+            <p className="eyebrow">{a.original}</p>
+            <p className="well mt-1.5 whitespace-pre-wrap break-words text-sm text-ink-soft">{s.original_text || "—"}</p>
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">{a.suggested}</p>
+          <div className="min-w-0">
+            <p className="eyebrow text-found-ink">{a.suggested}</p>
             {editing ? (
-              <div className="mt-1 space-y-2">
-                <textarea className="input sm:text-sm" rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000} />
+              <div className="mt-1.5 space-y-2">
+                <textarea className="input sm:text-sm" aria-label={a.suggested} rows={Math.min(10, Math.max(3, draft.split("\n").length + 1))} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000} />
                 <div className="flex gap-2">
                   <button className="btn-primary btn-sm" onClick={() => { onPatch({ editedText: draft === s.suggested_text ? null : draft }); setEditing(false); }}>{t.common.save}</button>
                   <button className="btn-ghost btn-sm" onClick={() => { setDraft(finalText); setEditing(false); }}>{t.common.cancel}</button>
                 </div>
               </div>
             ) : (
-              <p className="mt-1 whitespace-pre-wrap rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950">{finalText}</p>
+              <p className="mt-1.5 whitespace-pre-wrap break-words rounded-lg bg-found-soft p-3 text-sm text-ink">{finalText}</p>
             )}
           </div>
         </div>
       )}
 
       {!advisory && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {s.status === "pending" ? (
             <>
               <button className="btn-primary btn-sm" disabled={isConfirm && !s.confirmed_by_user} onClick={() => onPatch({ status: "accepted" })}>{a.accept}</button>

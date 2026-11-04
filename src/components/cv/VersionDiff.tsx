@@ -10,7 +10,7 @@ export function VersionDiff({ before, after }: { before: CvData; after: CvData }
   const diff = useMemo(() => diffLines(cvToPlainText(before).split("\n"), cvToPlainText(after).split("\n")), [before, after]);
   if (diff.every((d) => d.type === "same")) return <p className="text-sm text-ink-muted">{t.resumes.noDiff}</p>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white font-mono text-xs">
+    <div className="overflow-x-auto rounded-lg border border-line bg-white py-1 font-mono text-xs">
       {diff.map((d, i) => (
         <div
           key={i}

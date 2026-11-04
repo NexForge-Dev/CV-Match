@@ -6,7 +6,7 @@ import { formatDate, formatPrice } from "@/lib/i18n/config";
 import { getPublicPlans } from "@/lib/billing/getPlans";
 import { env } from "@/lib/env";
 import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
-import { Alert, PageHeader } from "@/components/ui";
+import { Alert, CardHeader, PageHeader, StatCard } from "@/components/ui";
 import { CheckoutButton, PortalButton, TermsConsentCheckbox, TermsConsentProvider } from "@/components/app/BillingButtons";
 import { track } from "@/lib/analytics";
 
@@ -41,33 +41,29 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       {!stripeKey && <Alert tone="warn">{t.errors.not_configured} (Stripe)</Alert>}
       {paymentIssue && <Alert tone="warn">{b.paymentIssue}</Alert>}
 
-      <section className="card grid gap-4 p-6 sm:grid-cols-3">
-        <div>
-          <p className="text-sm text-ink-muted">{b.free}</p>
-          <p className="text-2xl font-bold">{credits.free_credits}</p>
-        </div>
-        <div>
-          <p className="text-sm text-ink-muted">{b.paid}</p>
-          <p className="text-2xl font-bold">{credits.paid_credits}</p>
-        </div>
-        <div>
-          <p className="text-sm text-ink-muted">{b.pro}</p>
-          {subscribed ? (
-            <>
-              <p className="text-2xl font-bold">{Math.max((credits.period_included ?? 0) - (credits.period_used ?? 0), 0)} / {credits.period_included}</p>
-              {credits.period_end && <p className="text-xs text-ink-muted">{b.periodEnds(formatDate(credits.period_end, locale))}</p>}
-              {subscription.data?.cancel_at_period_end && <p className="text-xs font-medium text-amber-800">{b.cancelAtEnd}</p>}
-            </>
-          ) : (
-            <p className="text-2xl font-bold">—</p>
-          )}
-          {customer.data && <div className="mt-2"><PortalButton /></div>}
-        </div>
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3" aria-label={b.current}>
+        <StatCard label={b.free} value={credits.free_credits} />
+        <StatCard label={b.paid} value={credits.paid_credits} />
+        <StatCard
+          label={b.pro}
+          value={subscribed ? `${Math.max((credits.period_included ?? 0) - (credits.period_used ?? 0), 0)}/${credits.period_included}` : "—"}
+          hint={
+            subscribed && (credits.period_end || subscription.data?.cancel_at_period_end) ? (
+              <>
+                {credits.period_end && <p className="text-xs">{b.periodEnds(formatDate(credits.period_end, locale))}</p>}
+                {subscription.data?.cancel_at_period_end && <p className="text-xs font-medium text-partial-ink">{b.cancelAtEnd}</p>}
+              </>
+            ) : undefined
+          }
+        >
+          {customer.data && <PortalButton />}
+        </StatCard>
       </section>
 
       <TermsConsentProvider>
+        <h2 className="pt-2 text-lg font-semibold text-ink">{b.plansTitle}</h2>
         <TermsConsentCheckbox />
-        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => {
             const f = plan.features;
             const features = [
@@ -78,15 +74,15 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               b.exports,
             ];
             return (
-              <div key={plan.id} className={`card flex flex-col p-6 ${plan.kind === "subscription" ? "border-brand-300 ring-1 ring-brand-200" : ""}`}>
-                <h2 className="font-semibold">{plan.name}</h2>
-                <p className="mt-2 text-3xl font-bold">
-                  {formatPrice(plan.price_cents, plan.currency, locale)}
-                  {plan.kind === "subscription" && <span className="text-base font-normal text-ink-muted">{plan.billing_interval === "quarter" ? b.perQuarter : b.perMonth}</span>}
+              <div key={plan.id} className={`card flex flex-col p-5 ${plan.kind === "subscription" ? "border-brand-300" : ""}`}>
+                <h3 className="font-semibold text-ink">{plan.name}</h3>
+                <p className="mt-2 flex flex-wrap items-baseline gap-x-1">
+                  <span className="text-3xl font-bold tracking-tight text-ink">{formatPrice(plan.price_cents, plan.currency, locale)}</span>
+                  {plan.kind === "subscription" && <span className="text-sm text-ink-muted">{plan.billing_interval === "quarter" ? b.perQuarter : b.perMonth}</span>}
                 </p>
-                <ul className="mt-4 flex-1 space-y-2 text-sm">
+                <ul className="mt-4 flex-1 space-y-2 text-sm text-ink-soft">
                   {features.map((x) => (
-                    <li key={x} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" /> {x}</li>
+                    <li key={x} className="flex gap-2"><Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" /> {x}</li>
                   ))}
                 </ul>
                 {plan.kind !== "free" && (
@@ -101,13 +97,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
       </TermsConsentProvider>
 
       {ledger.data && ledger.data.length > 0 && (
-        <section className="card p-6">
-          <h2 className="mb-3 font-semibold">{b.history}</h2>
-          <ul className="divide-y divide-slate-100 text-sm">
+        <section className="card">
+          <CardHeader title={b.history} />
+          <ul className="divider-list text-sm">
             {ledger.data.map((l) => (
-              <li key={l.id} className="flex justify-between py-2">
-                <span>{b.reasons[l.reason] ?? l.reason} <span className="text-xs text-ink-muted">· {formatDate(l.created_at, locale)}</span></span>
-                <span className={l.delta > 0 ? "text-emerald-700" : "text-ink-soft"}>{l.delta > 0 ? `+${l.delta}` : l.delta}</span>
+              <li key={l.id} className="flex items-center justify-between gap-3 px-5 py-2.5">
+                <span className="min-w-0 text-ink">{b.reasons[l.reason] ?? l.reason} <span className="text-xs text-ink-muted">· {formatDate(l.created_at, locale)}</span></span>
+                <span className={`readout shrink-0 font-medium ${l.delta > 0 ? "text-found-ink" : "text-ink-soft"}`}>{l.delta > 0 ? `+${l.delta}` : l.delta}</span>
               </li>
             ))}
           </ul>

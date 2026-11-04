@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileSearch, GitCompare, Loader2, Save } from "lucide-react";
+import { ChevronDown, Download, FileSearch, GitCompare, Loader2, Save } from "lucide-react";
 import { CvForm } from "@/components/cv/CvForm";
 import { CvPreview } from "@/components/cv/CvPreview";
 import { VersionDiff } from "@/components/cv/VersionDiff";
@@ -82,12 +82,12 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   return (
     <div className="mx-auto max-w-[1400px]">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <Link href="/resumes" className="text-sm text-ink-muted hover:text-ink">← {t.nav.resumes}</Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{resume.title}</h1>
+          <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-ink">{resume.title}</h1>
           <p className="text-sm text-ink-muted">{r.version(selected.number)} · {r.origin[selected.origin] ?? selected.origin}{selected.label ? ` · ${versionLabel(selected.label)}` : ""}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <a href={exportUrl("pdf")} className={`btn-secondary ${dirty ? "pointer-events-none opacity-50" : ""}`} aria-disabled={dirty}><Download className="h-4 w-4" /> {r.exportPdf}</a>
           <a href={exportUrl("docx")} className={`btn-secondary ${dirty ? "pointer-events-none opacity-50" : ""}`} aria-disabled={dirty}><Download className="h-4 w-4" /> {r.exportDocx}</a>
           <Link href={`/new?resume=${resume.id}`} className="btn-primary"><FileSearch className="h-4 w-4" /> {r.analyze}</Link>
@@ -98,10 +98,10 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
       {saved && !dirty && <div className="mb-4"><Alert tone="success">{saved}</Alert></div>}
       {dirty && <div className="mb-4"><Alert tone="warn">{r.unsaved}</Alert></div>}
 
-      <div className="grid gap-6 xl:grid-cols-[260px_1fr]">
-        <aside className="space-y-4">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="min-w-0 space-y-4">
           <div className="card p-4">
-            <h2 className="mb-2 text-sm font-semibold">{r.versions}</h2>
+            <h2 className="mb-2 text-sm font-semibold text-ink">{r.versions}</h2>
             <ul className="max-h-[220px] space-y-1 overflow-y-auto xl:max-h-[340px]">
               {versions.map((v) => (
                 <li key={v.id}>
@@ -110,7 +110,8 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
                       if (dirty && !window.confirm(r.unsaved)) return;
                       setSelectedId(v.id);
                     }}
-                    className={`w-full rounded-lg px-3 py-2 text-left text-sm ${v.id === selected.id ? "bg-brand-50 text-brand-800" : "hover:bg-slate-50"}`}
+                    aria-current={v.id === selected.id ? "true" : undefined}
+                    className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${v.id === selected.id ? "bg-brand-50 text-brand-800" : "hover:bg-slate-50"}`}
                   >
                     <span className="font-medium">{r.version(v.number)}</span>
                     <span className="block text-xs text-ink-muted">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
@@ -127,10 +128,10 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
           </div>
 
           {/* Collapsed by default so phones reach the editor quickly. */}
-          <details className="card group p-4 [&_summary::-webkit-details-marker]:hidden">
-            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold">
+          <details className="card group p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink">
               {r.settings}
-              <span className="text-ink-muted transition group-open:rotate-180" aria-hidden>▾</span>
+              <ChevronDown aria-hidden className="h-4 w-4 text-ink-muted transition-transform group-open:rotate-180" />
             </summary>
             <div className="mt-3 space-y-3">
             <div>
@@ -158,9 +159,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist">
+          <div className="tabs mb-4" role="tablist">
             {(["editor", "preview", "compare"] as const).map((v) => (
-              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium ${view === v ? "border-brand-600 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"}`}>
+              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className="tab">
                 {v === "editor" ? r.editor : v === "preview" ? r.preview : <span className="inline-flex items-center gap-1"><GitCompare className="h-3.5 w-3.5" /> {r.compare}</span>}
               </button>
             ))}
@@ -168,9 +169,9 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
 
           {view === "editor" && (
             <div className="grid gap-6 2xl:grid-cols-2">
-              <div className="card p-4 sm:p-6">
+              <div className="card min-w-0 p-4 sm:p-6">
                 <CvForm value={draft} onChange={setDraft} formKey={selected.id} />
-                <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-end gap-3 border-t border-slate-200 bg-white pt-4">
+                <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-end gap-3 border-t border-line bg-white pt-4">
                   <div className="min-w-[200px] flex-1">
                     <label className="label" htmlFor="v-label">{r.versionLabel}</label>
                     <input id="v-label" className="input" value={label} maxLength={200} onChange={(e) => setLabel(e.target.value)} />
@@ -182,7 +183,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
                 </div>
               </div>
               <div className="hidden 2xl:block">
-                <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-xl bg-slate-200 p-4">
+                <div className="sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto rounded-xl bg-slate-100 p-4">
                   <CvPreview cv={draft} language={settings.language} template={settings.template} />
                 </div>
               </div>
@@ -190,7 +191,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
           )}
 
           {view === "preview" && (
-            <div className="overflow-x-auto rounded-xl bg-slate-200 p-4">
+            <div className="overflow-x-auto rounded-xl bg-slate-100 p-2 sm:p-4">
               <CvPreview cv={draft} language={settings.language} template={settings.template} />
             </div>
           )}

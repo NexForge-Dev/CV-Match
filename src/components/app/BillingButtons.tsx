@@ -21,7 +21,7 @@ export function TermsConsentCheckbox() {
   const { t } = useI18n();
   const { accepted, setAccepted } = useContext(TermsConsentContext);
   return (
-    <label className="card flex items-start gap-3 p-4 text-sm text-ink-soft">
+    <label className="card flex cursor-pointer items-start gap-3 p-4 text-sm text-ink-soft">
       <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
       <span>
         {t.billing.termsConsent}{" "}
@@ -54,7 +54,7 @@ export function CheckoutButton({ planId, label, disabled }: { planId: string; la
         {busy && <Loader2 className="h-4 w-4 animate-spin" />}
         {busy ? t.billing.redirecting : label}
       </button>
-      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-xs text-missing-ink" role="alert">{error}</p>}
     </div>
   );
 }
@@ -74,8 +74,11 @@ export function PortalButton() {
   }
   return (
     <>
-      <button className="btn-secondary btn-sm" disabled={busy} onClick={go}>{t.billing.manage}</button>
-      {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+      <button className="btn-secondary btn-sm" disabled={busy} onClick={go}>
+        {busy && <Loader2 aria-hidden className="h-3.5 w-3.5 animate-spin" />}
+        {t.billing.manage}
+      </button>
+      {error && <p className="mt-1 text-xs text-missing-ink" role="alert">{error}</p>}
     </>
   );
 }

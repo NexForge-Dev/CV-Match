@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, Briefcase, FileSearch, FileText, ListChecks, PlusCircle } from "lucide-react";
+import { ArrowRight, Briefcase, FileSearch, FileText, Gauge, ListChecks, Plus, Wallet } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { analysesAvailable, getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
-import { EmptyState, PageHeader, ScoreRing } from "@/components/ui";
+import { CardHeader, PageHeader, ScoreRing, StatCard } from "@/components/ui";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -18,6 +18,7 @@ const one = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
 export default async function DashboardPage() {
   const { supabase } = await requireUser("/dashboard");
   const { t, locale } = await getDictionary();
+  const d = t.dashboard;
 
   const [profile, resumes, analyses, jobs, pending, credits] = await Promise.all([
     supabase.from("profiles").select("full_name").maybeSingle(),
@@ -31,116 +32,140 @@ export default async function DashboardPage() {
   const firstName = (profile.data?.full_name ?? "").split(" ")[0];
   const pendingCount = pending.count ?? 0;
   const pendingAnalysis = pending.data?.[0]?.analysis_id as string | undefined;
+  const available = analysesAvailable(credits);
+  const latest = analyses.data?.[0];
+  const isNew = !analyses.data?.length;
+  // A brand-new account sees the three steps instead of three empty lists.
+  const blank = isNew && !resumes.data?.length && !jobs.data?.length;
 
   return (
     <div className="mx-auto max-w-6xl">
       <PageHeader
-        title={t.dashboard.hello(firstName)}
-        subtitle={t.dashboard.subtitle}
+        title={d.hello(firstName)}
+        subtitle={d.subtitle}
         actions={
           <Link href="/new" className="btn-primary">
-            <PlusCircle className="h-4 w-4" /> {t.dashboard.start}
+            <Plus aria-hidden className="h-4 w-4" /> {d.start}
           </Link>
         }
       />
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="card p-5">
-          <p className="text-sm font-medium text-ink-muted">{t.dashboard.credits}</p>
-          <div className="mt-2 flex flex-wrap gap-2 text-sm">
-            {hasActiveSubscription(credits) && <span className="badge bg-brand-50 text-brand-700">{t.dashboard.subLeft(credits.period_used ?? 0, credits.period_included ?? 0)}</span>}
-            <span className="badge bg-slate-100 text-ink-soft">{t.dashboard.paidLeft(credits.paid_credits)}</span>
-            <span className="badge bg-slate-100 text-ink-soft">{t.dashboard.freeLeft(credits.free_credits)}</span>
+      {isNew && (
+        <section className="card mb-6 overflow-hidden">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="font-semibold text-ink">{d.getStarted}</h2>
+            <p className="mt-0.5 text-sm text-ink-muted">{d.getStartedText}</p>
           </div>
-          {analysesAvailable(credits) === 0 ? (
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <p className="text-sm font-medium text-amber-800">{t.dashboard.noCredits}</p>
-              <Link href="/billing" className="btn-primary btn-sm">{t.dashboard.buy}</Link>
-            </div>
+          <ol className="grid divide-y divide-slate-100 md:grid-cols-3 md:divide-x md:divide-y-0">
+            {d.steps.map((step, i) => (
+              <li key={step.title} className="flex gap-3 p-5">
+                <span className="readout grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{i + 1}</span>
+                <div>
+                  <p className="text-sm font-semibold text-ink">{step.title}</p>
+                  <p className="mt-0.5 text-sm text-ink-muted">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <div className="border-t border-slate-100 bg-slate-50 px-5 py-3">
+            <Link href="/new" className="btn-primary btn-sm">
+              {d.start} <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </section>
+      )}
+
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <StatCard
+          icon={Wallet}
+          label={d.credits}
+          value={available}
+          hint={
+            <span className="flex flex-wrap gap-x-2 gap-y-0.5">
+              {hasActiveSubscription(credits) && <span>{d.subLeft(credits.period_used ?? 0, credits.period_included ?? 0)}</span>}
+              {credits.paid_credits > 0 && <span>{d.paidLeft(credits.paid_credits)}</span>}
+              {credits.free_credits > 0 && <span>{d.freeLeft(credits.free_credits)}</span>}
+              {available === 0 && <span className="font-medium text-partial-ink">{d.noCredits}</span>}
+            </span>
+          }
+        >
+          {available === 0 ? (
+            <Link href="/billing" className="btn-primary btn-sm">{d.buy}</Link>
           ) : (
-            <Link href="/billing" className="link mt-3 inline-block text-sm">{t.nav.billing} →</Link>
+            <Link href="/billing" className="link text-sm">{t.nav.billing}</Link>
           )}
-        </div>
-        <div className="card p-5">
-          <p className="flex items-center gap-2 text-sm font-medium text-ink-muted"><ListChecks className="h-4 w-4" /> {t.dashboard.pending}</p>
-          <p className="mt-2 text-2xl font-bold">{pendingCount}</p>
-          <p className="text-sm text-ink-muted">{t.dashboard.pendingText(pendingCount)}</p>
-          {pendingAnalysis && <Link href={`/analyses/${pendingAnalysis}?tab=suggestions`} className="link mt-2 inline-block text-sm">{t.common.open} →</Link>}
-        </div>
+        </StatCard>
+        <StatCard icon={ListChecks} label={d.pending} value={pendingCount} hint={pendingCount > 0 ? d.pendingText(pendingCount) : d.nothingPending}>
+          {pendingAnalysis && <Link href={`/analyses/${pendingAnalysis}?tab=suggestions`} className="link text-sm">{d.reviewPending}</Link>}
+        </StatCard>
+        <StatCard icon={Gauge} label={d.latestScore} value={latest?.score ?? "—"} hint={latest ? formatDate(latest.created_at, locale) : d.latestScoreEmpty}>
+          {latest && <Link href={`/analyses/${latest.id}`} className="link text-sm">{t.common.open}</Link>}
+        </StatCard>
       </div>
 
       {/* grid-cols-1: without an explicit template the column grows to fit long (truncated) titles on phones. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <section className="card min-w-0 p-5 lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-semibold"><FileSearch className="h-4 w-4 text-brand-600" /> {t.dashboard.recentAnalyses}</h2>
-            <Link href="/analyses" className="link text-sm">{t.dashboard.viewAll}</Link>
-          </div>
+      {!blank && <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <section className="card min-w-0 lg:col-span-2">
+          <CardHeader icon={FileSearch} title={d.recentAnalyses} action={<Link href="/analyses" className="link">{d.viewAll}</Link>} />
           {analyses.data?.length ? (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divider-list">
               {analyses.data.map((a) => {
                 const job = one(a.job_descriptions as Rel<{ title: string; company: string }>);
                 const resume = one(a.resumes as Rel<{ title: string }>);
                 return (
                   <li key={a.id}>
-                    <Link href={`/analyses/${a.id}`} className="flex items-center gap-4 py-3 hover:bg-slate-50">
+                    <Link href={`/analyses/${a.id}`} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50">
                       <ScoreRing score={a.score} size={44} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{job?.title || job?.company || "—"}{job?.company && job?.title ? ` · ${job.company}` : ""}</p>
+                        <p className="truncate text-sm font-medium text-ink">{job?.title || job?.company || "—"}{job?.company && job?.title ? ` · ${job.company}` : ""}</p>
                         <p className="truncate text-xs text-ink-muted">{resume?.title} · {formatDate(a.created_at, locale)}</p>
                       </div>
-                      <ArrowRight className="h-4 w-4 text-ink-muted" />
+                      <ArrowRight aria-hidden className="h-4 w-4 shrink-0 text-slate-400" />
                     </Link>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <EmptyState title={t.dashboard.noAnalyses} action={<Link href="/new" className="btn-primary btn-sm">{t.dashboard.start}</Link>} />
+            <p className="px-5 py-8 text-center text-sm text-ink-muted">{d.noAnalyses}</p>
           )}
         </section>
 
         <div className="min-w-0 space-y-6">
-          <section className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-brand-600" /> {t.dashboard.recentCvs}</h2>
-              <Link href="/resumes" className="link text-sm">{t.dashboard.viewAll}</Link>
-            </div>
+          <section className="card">
+            <CardHeader icon={FileText} title={d.recentCvs} action={<Link href="/resumes" className="link">{d.viewAll}</Link>} />
             {resumes.data?.length ? (
-              <ul className="space-y-2 text-sm">
+              <ul className="divider-list text-sm">
                 {resumes.data.map((r) => (
                   <li key={r.id}>
-                    <Link href={`/resumes/${r.id}`} className="flex justify-between gap-2 hover:text-brand-700">
-                      <span className="truncate">{r.title}</span>
-                      <span className="shrink-0 text-xs uppercase text-ink-muted">{r.language}</span>
+                    <Link href={`/resumes/${r.id}`} className="flex items-center justify-between gap-2 px-5 py-2.5 transition-colors hover:bg-slate-50">
+                      <span className="truncate text-ink">{r.title}</span>
+                      <span className="tag shrink-0 uppercase">{r.language}</span>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-muted">{t.dashboard.noCvs}</p>
+              <p className="px-5 py-6 text-sm text-ink-muted">{d.noCvs}</p>
             )}
           </section>
-          <section className="card p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 font-semibold"><Briefcase className="h-4 w-4 text-brand-600" /> {t.dashboard.savedJobs}</h2>
-              <Link href="/jobs" className="link text-sm">{t.dashboard.viewAll}</Link>
-            </div>
+          <section className="card">
+            <CardHeader icon={Briefcase} title={d.savedJobs} action={<Link href="/jobs" className="link">{d.viewAll}</Link>} />
             {jobs.data?.length ? (
-              <ul className="space-y-2 text-sm">
+              <ul className="divider-list text-sm">
                 {jobs.data.map((j) => (
-                  <li key={j.id} className="truncate">
+                  <li key={j.id} className="truncate px-5 py-2.5 text-ink">
                     {j.title || "—"}
                     {j.company ? <span className="text-ink-muted"> · {j.company}</span> : null}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-ink-muted">{t.dashboard.noJobs}</p>
+              <p className="px-5 py-6 text-sm text-ink-muted">{d.noJobs}</p>
             )}
           </section>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

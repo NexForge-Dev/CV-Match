@@ -12,7 +12,7 @@ export function LocaleSwitcher({ className = "" }: { className?: string }) {
   return (
     <select
       aria-label="Language"
-      className={`min-h-11 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-ink-soft sm:min-h-0 ${className}`}
+      className={`min-h-11 rounded-lg border border-line-strong bg-white px-2 py-1.5 text-xs text-ink-soft transition-colors hover:border-slate-400 sm:min-h-0 ${className}`}
       value={locale}
       disabled={pending}
       onChange={(e) => {

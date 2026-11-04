@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Check, FileUp, Loader2 } from "lucide-react";
+import { Check, FileText, FileUp, Loader2 } from "lucide-react";
 import { CvForm } from "@/components/cv/CvForm";
 import { Alert } from "@/components/ui";
 import { api, errorMessage } from "@/lib/client/api";
@@ -46,6 +46,7 @@ export function NewAnalysisWizard({
   const [step, setStep] = useState(pre ? 2 : 0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   // Errors are shown above the steps: bring them into view (on phones the buttons are far below).
   useEffect(() => {
@@ -149,12 +150,17 @@ export function NewAnalysisWizard({
     router.push(`/analyses/${res.data.analysisId}`);
   }
 
+  // The stepper reaches its last step while the analysis runs.
+  const current = busy === "analyze" ? 3 : step;
   const stepper = (
-    <ol className="mb-6 flex flex-wrap gap-2 text-sm">
+    <ol className="mb-6 flex items-center" aria-label={w.stepOf(current + 1, w.steps.length)}>
       {w.steps.map((label, i) => (
-        <li key={label} className={`flex items-center gap-2 rounded-full px-3 py-1 ${i === step ? "bg-brand-600 text-white" : i < step ? "bg-brand-50 text-brand-700" : "bg-slate-100 text-ink-muted"}`}>
-          {i < step ? <Check className="h-3.5 w-3.5" /> : <span className="text-xs font-semibold">{i + 1}</span>}
-          {label}
+        <li key={label} aria-current={i === current ? "step" : undefined} className="flex flex-1 items-center gap-2 last:flex-none">
+          <span className={`readout grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold ${i === current ? "bg-brand-600 text-white" : i < current ? "bg-brand-50 text-brand-700" : "bg-slate-200 text-ink-muted"}`}>
+            {i < current ? <Check aria-hidden className="h-3.5 w-3.5" /> : i + 1}
+          </span>
+          <span className={`text-sm font-medium ${i === current ? "text-ink" : "hidden text-ink-muted sm:inline"}`}>{label}</span>
+          {i < w.steps.length - 1 && <span aria-hidden className={`mx-1 h-px min-w-3 flex-1 sm:mx-2 ${i < current ? "bg-brand-300" : "bg-line-strong"}`} />}
         </li>
       ))}
     </ol>
@@ -184,25 +190,33 @@ export function NewAnalysisWizard({
       )}
 
       {step === 0 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="card p-6">
-            <h2 className="text-lg font-semibold">{w.importTitle}</h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="card p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-ink">{w.importTitle}</h2>
             <p className="mt-1 text-sm text-ink-muted">{w.importText}</p>
             <div
-              className="mt-5 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center"
-              onDragOver={(e) => e.preventDefault()}
+              className={`mt-5 flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 text-center transition-colors ${dragging ? "border-brand-500 bg-brand-50" : "border-line-strong bg-slate-50"}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
               onDrop={(e) => {
                 e.preventDefault();
+                setDragging(false);
                 const f = e.dataTransfer.files?.[0];
                 if (f) void upload(f);
               }}
             >
-              {busy === "upload" ? <Loader2 className="h-8 w-8 animate-spin text-brand-600" /> : <FileUp className="h-8 w-8 text-brand-600" />}
-              <p className="mt-3 text-sm font-medium">{busy === "upload" ? w.uploading : w.upload}</p>
-              <p className="mt-1 text-xs text-ink-muted">{w.uploadHint(maxUploadMb)}</p>
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-brand-600 shadow-card">
+                {busy === "upload" ? <Loader2 aria-hidden className="h-6 w-6 animate-spin" /> : <FileUp aria-hidden className="h-6 w-6" />}
+              </span>
+              <p className="mt-3 text-sm font-medium text-ink">{busy === "upload" ? w.uploading : dragging ? w.dropHere : w.upload}</p>
+              <p className="mt-1 max-w-xs text-xs text-ink-muted">{w.uploadHint(maxUploadMb)}</p>
               <input
                 ref={fileRef}
                 type="file"
+                aria-label={w.upload}
                 accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="hidden"
                 onChange={(e) => {
@@ -217,11 +231,11 @@ export function NewAnalysisWizard({
             </div>
             {existing.length > 0 && (
               <div className="mt-6">
-                <h3 className="text-sm font-semibold">{w.orExisting}</h3>
-                <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200">
+                <h3 className="text-sm font-semibold text-ink">{w.orExisting}</h3>
+                <ul className="divider-list mt-2 rounded-lg border border-line">
                   {existing.map((r) => (
-                    <li key={r.id} className="flex flex-col gap-2 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                      <span className="min-w-0 truncate">{r.title} <span className="text-ink-muted">· v{r.versionNumber} · {r.language.toUpperCase()}</span></span>
+                    <li key={r.id} className="flex flex-col gap-2 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <span className="min-w-0 truncate text-ink">{r.title} <span className="text-ink-muted">· v{r.versionNumber} · {r.language.toUpperCase()}</span></span>
                       <button className="btn-secondary btn-sm shrink-0 self-start sm:self-auto" onClick={() => chooseExisting(r)}>{w.useVersion}</button>
                     </li>
                   ))}
@@ -229,21 +243,24 @@ export function NewAnalysisWizard({
               </div>
             )}
           </section>
-          <section className="card p-6">
-            <h2 className="text-lg font-semibold">{w.orPaste}</h2>
-            <textarea className="input mt-4 min-h-[280px] font-mono text-xs" aria-label={w.orPaste} placeholder={w.pastePlaceholder} value={pasted} onChange={(e) => setPasted(e.target.value)} maxLength={60000} />
-            <button className="btn-secondary mt-3" disabled={pasted.trim().length < 30 || busy !== null} onClick={usePasted}>
-              {busy === "paste" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              {w.useText}
-            </button>
+          <section className="card flex flex-col p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-ink">{w.orPaste}</h2>
+            <textarea className="input mt-4 min-h-[280px] flex-1 sm:text-sm" aria-label={w.orPaste} placeholder={w.pastePlaceholder} value={pasted} onChange={(e) => setPasted(e.target.value)} maxLength={60000} />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className="btn-secondary" disabled={pasted.trim().length < 30 || busy !== null} onClick={usePasted}>
+                {busy === "paste" ? <Loader2 aria-hidden className="h-4 w-4 animate-spin" /> : null}
+                {w.useText}
+              </button>
+              {pasted.trim().length > 0 && pasted.trim().length < 30 && <span className="text-xs text-ink-muted">{w.minChars(30)}</span>}
+            </div>
           </section>
         </div>
       )}
 
       {step === 1 && extraction && (
-        <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-          <section className="card p-6">
-            <h2 className="text-lg font-semibold">{w.reviewTitle}</h2>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <section className="card min-w-0 p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-ink">{w.reviewTitle}</h2>
             <p className="mt-1 text-sm text-ink-muted">{w.reviewText}</p>
             <div className="mt-4 space-y-2">
               <Alert tone={extraction.status === "ok" ? "success" : extraction.status === "low_text" ? "warn" : "error"}>{w.status[extraction.status]}</Alert>
@@ -267,100 +284,109 @@ export function NewAnalysisWizard({
             <div className="mt-6">
               <CvForm value={cv} onChange={setCv} formKey={formKey} />
             </div>
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
               <button className="btn-secondary" onClick={() => setStep(0)}>{t.common.back}</button>
               <button className="btn-primary" onClick={saveCv} disabled={busy !== null}>
-                {busy === "save" && <Loader2 className="h-4 w-4 animate-spin" />}
+                {busy === "save" && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
                 {w.saveAndContinue}
               </button>
             </div>
           </section>
-          <aside className="card h-fit p-4 xl:sticky xl:top-6">
-            <h3 className="text-sm font-semibold">{w.extracted}</h3>
-            <pre className="mt-2 max-h-[70vh] overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-3 text-xs text-ink-soft">{extraction.text || "—"}</pre>
+          <aside className="card h-fit min-w-0 p-4 xl:sticky xl:top-6">
+            <h3 className="text-sm font-semibold text-ink">{w.extracted}</h3>
+            <pre className="well mt-2 max-h-[40vh] overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-ink-soft xl:max-h-[70vh]">{extraction.text || "—"}</pre>
           </aside>
         </div>
       )}
 
       {step === 2 && (
-        <section className="card p-6">
-          <h2 className="text-lg font-semibold">{w.jobTitle}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{w.jobText}</p>
-          <p className="mt-3 text-sm"><span className="badge bg-brand-50 text-brand-700">{chosenTitle}</span></p>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="card min-w-0 p-5 sm:p-6">
+            <h2 className="text-lg font-semibold text-ink">{w.jobTitle}</h2>
+            <p className="mt-1 text-sm text-ink-muted">{w.jobText}</p>
 
-          {savedJobs.length > 0 && (
-            <div className="mt-4 flex gap-2 text-sm">
-              <button className={jobMode === "new" ? "btn-primary btn-sm" : "btn-secondary btn-sm"} onClick={() => setJobMode("new")}>{w.jobDescription}</button>
-              <button className={jobMode === "saved" ? "btn-primary btn-sm" : "btn-secondary btn-sm"} onClick={() => setJobMode("saved")}>{w.useSavedJob}</button>
-            </div>
-          )}
+            {savedJobs.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button aria-pressed={jobMode === "new"} className="chip" onClick={() => setJobMode("new")}>{w.jobDescription}</button>
+                <button aria-pressed={jobMode === "saved"} className="chip" onClick={() => setJobMode("saved")}>{w.useSavedJob}</button>
+              </div>
+            )}
 
-          {jobMode === "new" ? (
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="j-title">{w.jobRole}</label>
-                <input id="j-title" className="input" value={job.title} maxLength={200} onChange={(e) => setJob({ ...job, title: e.target.value })} />
+            {jobMode === "new" ? (
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="label" htmlFor="j-text">{w.jobDescription}</label>
+                  <textarea id="j-text" className="input min-h-[260px] sm:text-sm" placeholder={w.jobPlaceholder} value={job.rawText} maxLength={30000} onChange={(e) => setJob({ ...job, rawText: e.target.value })} />
+                  {job.rawText.trim().length > 0 && job.rawText.trim().length < 30 && <p className="hint">{w.minChars(30)}</p>}
+                </div>
+                <div>
+                  <label className="label" htmlFor="j-title">{w.jobRole}</label>
+                  <input id="j-title" className="input" value={job.title} maxLength={200} onChange={(e) => setJob({ ...job, title: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="j-company">{w.company} <span className="font-normal text-ink-muted">({t.common.optional})</span></label>
+                  <input id="j-company" className="input" value={job.company} maxLength={200} onChange={(e) => setJob({ ...job, company: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="j-location">{w.location} <span className="font-normal text-ink-muted">({t.common.optional})</span></label>
+                  <input id="j-location" className="input" value={job.location} maxLength={200} onChange={(e) => setJob({ ...job, location: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="j-url">{w.url} <span className="font-normal text-ink-muted">({t.common.optional})</span></label>
+                  <input id="j-url" type="url" className="input" value={job.url} maxLength={1000} placeholder="https://" onChange={(e) => setJob({ ...job, url: e.target.value })} />
+                </div>
+                <div>
+                  <label className="label" htmlFor="j-lang">{w.jobLanguage}</label>
+                  <select id="j-lang" className="input" value={job.language} onChange={(e) => setJob({ ...job, language: e.target.value as CvLanguage })}>
+                    {LANGS.map((l) => <option key={l} value={l}>{t.cvLanguage[l]}</option>)}
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="label" htmlFor="j-company">{w.company} <span className="text-ink-muted">({t.common.optional})</span></label>
-                <input id="j-company" className="input" value={job.company} maxLength={200} onChange={(e) => setJob({ ...job, company: e.target.value })} />
-              </div>
-              <div>
-                <label className="label" htmlFor="j-location">{w.location} <span className="text-ink-muted">({t.common.optional})</span></label>
-                <input id="j-location" className="input" value={job.location} maxLength={200} onChange={(e) => setJob({ ...job, location: e.target.value })} />
-              </div>
-              <div>
-                <label className="label" htmlFor="j-url">{w.url} <span className="text-ink-muted">({t.common.optional})</span></label>
-                <input id="j-url" type="url" className="input" value={job.url} maxLength={1000} placeholder="https://" onChange={(e) => setJob({ ...job, url: e.target.value })} />
-              </div>
-              <div>
-                <label className="label" htmlFor="j-lang">{w.jobLanguage}</label>
-                <select id="j-lang" className="input" value={job.language} onChange={(e) => setJob({ ...job, language: e.target.value as CvLanguage })}>
-                  {LANGS.map((l) => <option key={l} value={l}>{t.cvLanguage[l]}</option>)}
+            ) : (
+              <div className="mt-5">
+                <select className="input" value={savedJobId} onChange={(e) => setSavedJobId(e.target.value)} aria-label={w.useSavedJob}>
+                  {savedJobs.map((j) => (
+                    <option key={j.id} value={j.id}>{[j.title || "—", j.company].filter(Boolean).join(" · ")}</option>
+                  ))}
                 </select>
               </div>
-              <div className="sm:col-span-2">
-                <label className="label" htmlFor="j-text">{w.jobDescription}</label>
-                <textarea id="j-text" className="input min-h-[260px] text-sm" placeholder={w.jobPlaceholder} value={job.rawText} maxLength={30000} onChange={(e) => setJob({ ...job, rawText: e.target.value })} />
+            )}
+          </section>
+
+          <aside className="card h-fit min-w-0 p-5 lg:sticky lg:top-6">
+            <h3 className="eyebrow">{w.summaryTitle}</h3>
+            <div className="mt-3 flex items-start gap-2.5 rounded-lg bg-brand-50 px-3 py-2.5">
+              <FileText aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" />
+              <div className="min-w-0">
+                <p className="text-xs text-ink-muted">{w.summaryCv}</p>
+                <p className="break-words text-sm font-medium text-ink">{chosenTitle}</p>
               </div>
             </div>
-          ) : (
             <div className="mt-4">
-              <select className="input" value={savedJobId} onChange={(e) => setSavedJobId(e.target.value)} aria-label={w.useSavedJob}>
-                {savedJobs.map((j) => (
-                  <option key={j.id} value={j.id}>{[j.title || "—", j.company].filter(Boolean).join(" · ")}</option>
-                ))}
+              <label className="label" htmlFor="out-lang">{w.outputLanguage}</label>
+              <select id="out-lang" className="input" value={outputLanguage} onChange={(e) => setOutputLanguage(e.target.value as CvLanguage)}>
+                {LANGS.map((l) => <option key={l} value={l}>{t.cvLanguage[l]}</option>)}
               </select>
+              {!aiEnabled && <p className="hint">{w.heuristicLanguageNote}</p>}
             </div>
-          )}
-
-          <div className="mt-4 max-w-xs">
-            <label className="label" htmlFor="out-lang">{w.outputLanguage}</label>
-            <select id="out-lang" className="input" value={outputLanguage} onChange={(e) => setOutputLanguage(e.target.value as CvLanguage)}>
-              {LANGS.map((l) => <option key={l} value={l}>{t.cvLanguage[l]}</option>)}
-            </select>
-          </div>
-          {!aiEnabled && <p className="mt-2 max-w-xl text-xs text-ink-muted">{w.heuristicLanguageNote}</p>}
-
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <button className="btn-secondary" onClick={() => setStep(extraction ? 1 : 0)} disabled={busy !== null}>{t.common.back}</button>
             <button
-              className="btn-primary"
+              className="btn-primary mt-5 w-full"
               disabled={busy !== null || !versionId || (jobMode === "new" ? job.rawText.trim().length < 30 : !savedJobId)}
               onClick={analyze}
             >
-              {busy === "analyze" && <Loader2 className="h-4 w-4 animate-spin" />}
+              {busy === "analyze" && <Loader2 aria-hidden className="h-4 w-4 animate-spin" />}
               {busy === "analyze" ? w.analyzing : w.analyze}
             </button>
-            <span className="text-xs text-ink-muted">
+            <p className="hint text-center">
               {available > 0 ? w.creditsInfo : (
                 <>
                   {w.noCredits} <Link href="/billing" className="link">{w.buy}</Link>
                 </>
               )}
-            </span>
-          </div>
-        </section>
+            </p>
+            <button className="btn-ghost mt-2 w-full" onClick={() => setStep(extraction ? 1 : 0)} disabled={busy !== null}>{t.common.back}</button>
+          </aside>
+        </div>
       )}
     </div>
   );

@@ -10,7 +10,7 @@ export function CvPreview({ cv, language, template }: { cv: CvData; language: Cv
   );
   const c = cv.contact;
   return (
-    <article className={`mx-auto max-w-[760px] bg-white p-8 text-[13px] leading-relaxed text-ink shadow-card ${modern ? "font-sans" : "font-serif"}`}>
+    <article className={`mx-auto max-w-[760px] break-words bg-white p-5 text-[13px] sm:p-8 leading-relaxed text-ink shadow-card ${modern ? "font-sans" : "font-serif"}`}>
       <header className={modern ? "" : "text-center"}>
         <h2 className={`text-2xl font-bold ${modern ? "text-brand-700" : ""}`}>{c.fullName || "—"}</h2>
         {c.headline && <p className="text-ink-soft">{c.headline}</p>}

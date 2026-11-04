@@ -17,17 +17,17 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title={a.title} />
-      <section className="card p-6">
-        <p className="text-sm text-ink-muted">{a.email}</p>
-        <p className="font-medium">{user.email}</p>
+      <section className="card p-5 sm:p-6">
+        <p className="eyebrow">{a.email}</p>
+        <p className="mt-1 break-words font-medium text-ink">{user.email}</p>
       </section>
-      <section className="card p-6">
-        <h2 className="font-semibold">{a.exportData}</h2>
+      <section className="card p-5 sm:p-6">
+        <h2 className="font-semibold text-ink">{a.exportData}</h2>
         <p className="mt-1 text-sm text-ink-muted">{a.exportText}</p>
-        <a href="/api/account" className="btn-secondary mt-4"><Download className="h-4 w-4" /> {a.exportData}</a>
+        <a href="/api/account" className="btn-secondary mt-4"><Download aria-hidden className="h-4 w-4" /> {a.exportData}</a>
       </section>
-      <section className="card border-red-200 p-6">
-        <h2 className="font-semibold text-red-800">{a.dangerZone}</h2>
+      <section className="card border-missing-line p-5 sm:p-6">
+        <h2 className="font-semibold text-missing-ink">{a.dangerZone}</h2>
         <p className="mt-1 text-sm text-ink-soft">{a.dangerText}</p>
         <DeleteAccount />
       </section>

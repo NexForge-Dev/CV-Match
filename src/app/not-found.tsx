@@ -15,7 +15,7 @@ export default async function NotFound() {
       <Logo />
       <h1 className="mt-4 text-2xl font-bold text-ink">{t.status.notFoundTitle}</h1>
       <p className="text-ink-soft">{t.status.notFoundText}</p>
-      <Link href="/" className="rounded-lg bg-brand-600 px-4 py-2 font-medium text-white hover:bg-brand-700">
+      <Link href="/" className="btn-primary">
         {t.status.home}
       </Link>
     </main>
