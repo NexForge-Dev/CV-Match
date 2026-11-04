@@ -18,7 +18,7 @@ and boleto are one-time only, so subscriptions are card). `pack_5` is kept inact
 
 One full analysis (parse CV + extract job on Haiku 5.5, suggestions + cover letter + interview prep on
 Sonnet 5.5) ≈ 16.5k input / 13.4k output tokens ≈ US$0.11 ≈ **R$ 0,60**. Net = price − Stripe card fee
-(~3.99% + R$ 0,39; Pix is cheaper). No VAT is withheld per sale (individual seller — income tax via carnê-leão).
+(~3.99% + R$ 0,39; Pix is cheaper). No tax is withheld per sale (individual seller — income tax via carnê-leão).
 
 | Plan | Net revenue | AI cost at full use | Margin at full use |
 |---|---|---|---|
@@ -180,7 +180,7 @@ declared through carnê-leão; opening an MEI/company allows issuing invoices �
 
 1. Complete Stripe account activation (business details, bank account).
 2. Set the legal operator details (`LEGAL_*` variables) — they appear on `/legal` and `/privacy`.
-3. Configure tax (see above) and set `STRIPE_AUTOMATIC_TAX=true`.
+3. Keep `STRIPE_AUTOMATIC_TAX=false` for Brazil (see Tax above).
 4. Run `ENV_FILE=.env.production.local npm run stripe:sync` with the **live** key and the production database.
 5. In Stripe **Live mode**, create a webhook endpoint `https://YOUR_DOMAIN/api/stripe/webhook`
    listening to the events above, and copy its signing secret.

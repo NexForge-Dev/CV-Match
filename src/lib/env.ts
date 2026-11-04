@@ -36,7 +36,7 @@ const serverSchema = z.object({
 
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  // "true" enables Stripe Tax on checkout (VAT computed from the customer's address).
+  // "true" enables Stripe Tax on checkout. Stripe Tax does not support Brazil: keep false.
   STRIPE_AUTOMATIC_TAX: z.enum(["true", "false"]).default("false"),
   CRON_SECRET: z.string().optional(),
   // NexForge management panel (internal product metrics). All three unset = disabled.

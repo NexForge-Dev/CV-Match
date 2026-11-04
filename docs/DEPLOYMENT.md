@@ -47,7 +47,7 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
    | `STRIPE_WEBHOOK_SECRET` | from the Stripe webhook endpoint |
    | `CRON_SECRET` | random string (`openssl rand -hex 32`) |
    | `STORE_ORIGINAL_FILES` | `false` (recommended) |
-   | `STRIPE_AUTOMATIC_TAX` | `true` once Stripe Tax is enabled (see PAYMENTS.md) |
+   | `STRIPE_AUTOMATIC_TAX` | `false` — Stripe Tax does not support Brazil (see PAYMENTS.md) |
    | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL` | the provider's legal name, NIF, postal address and contact email (shown on `/legal` and `/privacy`) |
    | `LEGAL_BACKUP_RETENTION_DAYS` | days deleted data may remain in backups (Supabase Pro: `7`) |
 

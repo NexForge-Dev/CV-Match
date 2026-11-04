@@ -10,7 +10,7 @@
  * - Stripe prices are immutable: when amount/interval change, a new Price is created,
  *   takes over the lookup key `cvmatch_<plan id>` and the old one is archived.
  *   Existing subscribers keep their old price until they change plan.
- * - Prices are VAT-inclusive (tax_behavior = inclusive).
+ * - Prices are final, tax-inclusive consumer prices (tax_behavior = inclusive).
  * Price ids differ between test and live mode, so run it once per environment.
  */
 import { existsSync, readFileSync } from "node:fs";

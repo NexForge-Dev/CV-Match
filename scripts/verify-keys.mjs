@@ -131,7 +131,7 @@ if (!/^(sk|rk)_(test|live)_/.test(sk) || sk.includes("placeholder") || sk === "s
     const account = await stripe.accounts.retrieve();
     ok(`key valid — account ${account.id}${account.charges_enabled ? "" : " (charges NOT enabled yet: finish account activation)"}`);
     if (live && !account.charges_enabled) fail("live account cannot take payments yet — complete Stripe activation");
-    if (live && E.STRIPE_AUTOMATIC_TAX !== "true") warn("STRIPE_AUTOMATIC_TAX is off: no VAT is calculated on invoices — enable Stripe Tax before taking EU payments");
+    if (E.STRIPE_AUTOMATIC_TAX === "true") warn("STRIPE_AUTOMATIC_TAX is on: Stripe Tax does not support Brazil and checkout would require a billing address — keep it false");
 
     // Every synced price must exist in this mode and match the database price.
     if (E.NEXT_PUBLIC_SUPABASE_URL && E.SUPABASE_SERVICE_ROLE_KEY) {

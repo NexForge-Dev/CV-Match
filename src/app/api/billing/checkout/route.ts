@@ -92,8 +92,7 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     allow_promotion_codes: true,
     // Restates the 7-day refund policy (CDC art. 49) next to the pay button.
     custom_text: { submit: { message: t.billing.termsCheckoutNotice } },
-    // Stripe Tax computes the VAT included in the price from the customer's address. Requires Stripe Tax
-    // to be enabled with a registration in the dashboard; until then leave STRIPE_AUTOMATIC_TAX unset.
+    // Stripe Tax does not support Brazil: STRIPE_AUTOMATIC_TAX stays false in production.
     ...(env().STRIPE_AUTOMATIC_TAX === "true"
       ? { automatic_tax: { enabled: true }, billing_address_collection: "required" as const, customer_update: { address: "auto" as const, name: "auto" as const } }
       : {}),
