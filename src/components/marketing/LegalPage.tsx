@@ -1,12 +1,11 @@
 import type { LegalSection, MarketingDict } from "@/lib/i18n/marketing";
-import { LEGAL_LAST_UPDATED } from "@/lib/i18n/marketing";
-import { fillLegal, legalOperator } from "@/lib/legal";
+import { fillLegal, legalFeatures, legalOperator, legalParagraphs } from "@/lib/legal";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingHeader } from "./MarketingHeader";
 
 /** Renders a paragraph with the operator's details filled in and the contact email as a mailto link. */
 function Paragraph({ text, email }: { text: string; email: string }) {
-  if (!email.includes("@") || !text.includes(email)) return <p>{text}</p>;
+  if (!text.includes(email)) return <p>{text}</p>;
   const [before, ...rest] = text.split(email);
   return (
     <p>
@@ -21,6 +20,7 @@ function Paragraph({ text, email }: { text: string; email: string }) {
 
 export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; title: string; intro: string; sections: LegalSection[] }) {
   const op = legalOperator();
+  const features = legalFeatures();
   return (
     <div className="flex min-h-screen flex-col bg-white">
       <MarketingHeader t={t} />
@@ -40,7 +40,7 @@ export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; tit
         <article className="min-w-0 max-w-3xl">
           <h1 className="text-3xl font-bold tracking-tight text-ink">{title}</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            {t.legal.updated}: <span className="readout">{LEGAL_LAST_UPDATED}</span>
+            {t.legal.updated}: <span className="readout">{t.legal.updatedDate}</span>
           </p>
           <p className="mt-6 leading-relaxed text-ink-soft">{fillLegal(intro, op)}</p>
           <div className="mt-8 space-y-8">
@@ -48,8 +48,8 @@ export function LegalPage({ t, title, intro, sections }: { t: MarketingDict; tit
               <section key={s.title} id={`s${i + 1}`} className="scroll-mt-20">
                 <h2 className="text-lg font-semibold text-ink">{s.title}</h2>
                 <div className="mt-2 space-y-2 text-sm leading-relaxed text-ink-soft">
-                  {s.paragraphs.map((p) => (
-                    <Paragraph key={p} text={fillLegal(p, op)} email={op.email} />
+                  {legalParagraphs(s, op, features).map((p) => (
+                    <Paragraph key={p} text={p} email={op.email} />
                   ))}
                 </div>
               </section>

@@ -126,7 +126,7 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments (test keys first) |
 | `CRON_SECRET` | Protects `/api/cron/cleanup` |
 | `STRIPE_AUTOMATIC_TAX` | `true` turns on Stripe Tax at checkout (not available in Brazil — keep `false`) |
-| `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_BACKUP_RETENTION_DAYS` | Provider identity (name, CPF/CNPJ, address, e-mail) shown on `/legal` (Decreto 7.962/2013, LGPD) and `/privacy` (GDPR) — required in production |
+| `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS` | Provider identity (name, CPF/CNPJ, address) shown on `/legal` and `/privacy` (Decreto 7.962/2013, LGPD). While blank, the pages say it is pending. The contact e-mail is fixed in `src/lib/legal.ts` |
 
 **Plans and prices** are rows in the `plans` table — see [docs/PAYMENTS.md](./docs/PAYMENTS.md).
 
@@ -180,7 +180,7 @@ See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) (Vercel + Supabase Cloud + Stripe
 1. Create a Supabase Cloud project, run `npx supabase db push`, set Auth URLs and a custom SMTP sender.
 2. Create a Stripe account; complete the test-mode flow from `docs/PAYMENTS.md`; then switch to live keys and a live webhook.
 3. Set the environment variables in your host (see `.env.example`).
-4. Fill in the legal pages: set `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS` and `LEGAL_CONTACT_EMAIL` (the texts live in `src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
+4. Fill in the legal pages: set `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID` and `LEGAL_OPERATOR_ADDRESS` (the texts live in `src/lib/i18n/marketing.ts`), then have them reviewed by a lawyer.
 5. Optionally add `ANTHROPIC_API_KEY` for higher-quality parsing, wording and translation.
 6. Pull the production variables and run `ENV_FILE=.env.production.local npm run verify:keys` — it must report no blocking issues.
 

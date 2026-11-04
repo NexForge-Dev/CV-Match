@@ -1,8 +1,15 @@
 /** Landing page and legal copy. App UI strings live in dictionaries.ts. */
 
+/** Deployment facts that decide whether a paragraph is true: see legalFeatures() in lib/legal.ts. */
+export type LegalCondition = "ai" | "noAi" | "storedFiles" | "noStoredFiles" | "turnstile" | "ocr" | "metrics";
+
+export type LegalParagraph = string | { when: LegalCondition; text: string };
+
 export interface LegalSection {
   title: string;
-  paragraphs: string[];
+  paragraphs: LegalParagraph[];
+  /** Shown instead of the paragraphs that need an operator detail not published yet. */
+  pending?: string;
 }
 
 const en = {
@@ -160,6 +167,7 @@ const en = {
   legal: {
     contents: "On this page",
     updated: "Last updated",
+    updatedDate: "November 4, 2026",
   },
   legalNotice: {
     title: "Legal notice",
@@ -168,7 +176,8 @@ const en = {
     sections: [
       {
         title: "1. Supplier",
-        paragraphs: ["Name: {operator}", "CPF: {taxId}", "Physical address: {address}", "Electronic address and customer service: {email}"],
+        pending: "Supplier identification (name, CPF or CNPJ and physical address): publication pending. Until then, use the contact below for any request.",
+        paragraphs: ["Name: {operator}", "{taxLabel}: {taxId}", "Physical address: {address}", "Electronic address and customer service: {email}"],
       },
       {
         title: "2. Purpose",
@@ -179,7 +188,7 @@ const en = {
       {
         title: "3. Purchases and right of withdrawal",
         paragraphs: [
-          "Before payment, the checkout shows the plan, what it includes, the final price in reais, the payment methods available and, for subscriptions, the renewal period.",
+          "Before payment, the checkout shows the plan, the final price in reais, the payment methods available and, for subscriptions, the renewal period.",
           "You may withdraw from a purchase within 7 calendar days of payment (art. 49 of the Consumer Protection Code). The conditions and how to request it are described in section 5 of the terms of use. Requests: {email}.",
         ],
       },
@@ -192,76 +201,124 @@ const en = {
   privacy: {
     title: "Privacy policy",
     intro:
-      "This policy explains how CV Match processes personal data when you use the service, in accordance with the Brazilian General Data Protection Law (LGPD, Law 13,709/2018). CVs contain personal data, so we collect as little as possible and keep it only as long as needed.",
+      "This policy explains which personal data CV Match processes, why, with whom it is shared and how you can exercise your rights, under the Brazilian General Data Protection Law (LGPD, Law 13,709/2018). The service is offered in Brazil.",
     sections: [
       {
-        title: "1. Controller and contact",
+        title: "1. Controller and data protection officer",
+        pending: "Controller identification (name, CPF or CNPJ and address): publication pending. Until then, requests are handled through the contact below.",
         paragraphs: [
-          "The controller of your personal data is {operator} (CPF {taxId}), {address}. For any privacy request or question, contact {email}.",
-          "As a small-scale processing agent (Resolution CD/ANPD No. 2/2022), the controller is not required to appoint a data protection officer (encarregado). The communication channel for data subjects and for the ANPD is {email}.",
+          "Controller: {operator}",
+          "{taxLabel}: {taxId}",
+          "Address: {address}",
+          "Contact for the data protection officer (encarregado, LGPD art. 41) and channel for data subjects and the ANPD: {email}.",
         ],
       },
       {
         title: "2. Data we process",
         paragraphs: [
-          "Account data: email address and authentication data.",
-          "Profile data you enter: name, headline, location, preferences and skill bank.",
-          "CV content: text extracted from the documents you upload or paste, the structured CV you review, and the versions you save.",
-          "Job descriptions you paste, analyses, suggestions, cover letters and interview preparation generated for you.",
-          "Billing data: plan, credits and subscription status. Card and other payment details are handled by Stripe and never reach our servers.",
-          "Anti-abuse verification: on protected forms, Cloudflare Turnstile checks technical browser and connection signals to confirm that the request comes from a person.",
-          "Technical usage records (e.g. number of analyses, AI tokens consumed) that never include CV content. Aggregated product metrics (which features are used, sign-up and plan events) are recorded under a pseudonymous identifier, without your name, e-mail or any content.",
-          "We do not need sensitive personal data (such as health, religion, political opinion or ethnic origin). We recommend not including it in your CV unless it is relevant to the job.",
+          "Registration: name, e-mail address and password (processed by the authentication service), plus the record that you accepted the terms.",
+          "Profile: headline, location, locations of interest, sector, language and CV template preferences, and skill bank.",
+          "CV: name, type and size of the uploaded file; text extracted from the file or pasted by you; structured data (contact, experience, education, skills, projects, languages and certifications) and the versions you save.",
+          "Jobs: title, company, location, link, ad text and identified requirements.",
+          "Results: compatibility index, requirement classification, excerpts used as evidence, suggestions and your decisions on them, cover letters, interview preparation and the record of exports (format, template and language).",
+          "Billing: plan, credits, subscription status, Stripe customer identifier and acceptance of the terms at purchase. Card, Pix or boleto details are entered on Stripe's payment page and do not pass through our servers.",
+          "Usage and technical data: counts of analyses and other actions, used to apply limits. The hosting and authentication infrastructure receives connection data (such as IP address, browser, date and time) when serving each request.",
+          { when: "metrics", text: "Internal product metrics: usage events (such as sign-up, login, CV import, analysis, export, choosing, changing or cancelling a plan, amount paid and account deletion), tied to a pseudonymous identifier, without your name, e-mail or any CV or job text. Pseudonymised data is still personal data." },
+          { when: "turnstile", text: "Anti-abuse verification: on the login, sign-up and password recovery forms, Cloudflare Turnstile checks technical browser and connection signals to confirm that the request comes from a person." },
+          "Sensitive data: we do not ask for or need data such as health, disability, religion, political opinion, union membership or racial or ethnic origin, but a CV may contain it. We recommend removing it unless it is relevant to the job. Whatever is in the submitted text is processed like the rest of the CV.",
+          "Third-party data: CVs and job ads may mention other people (references, former managers, colleagues). Include third parties' contact details only if you may share them. This information is used only to provide the service to you, and the person mentioned can reach us at {email}.",
         ],
       },
       {
-        title: "3. Purposes and legal bases (LGPD art. 7)",
+        title: "3. Purposes and legal bases",
         paragraphs: [
-          "To provide the service you request: extracting, analysing and improving your CV and exporting documents — performance of a contract (art. 7, V).",
-          "To process payments and prevent fraud and abuse, including anti-bot verification — performance of a contract and legitimate interest (art. 7, V and IX).",
-          "To comply with legal and regulatory obligations, such as accounting and tax records of payments — compliance with a legal obligation (art. 7, II).",
-          "Where we ask for your consent for a specific purpose, the legal basis is consent (art. 7, I), which you may revoke at any time.",
+          "Providing the service you request (importing, analysing and improving your CV, generating content, exporting documents and keeping your account): performance of a contract (LGPD art. 7, V).",
+          "Processing payments and keeping accounting and tax records: performance of a contract and compliance with a legal obligation (art. 7, V and II).",
+          "Keeping the service secure, applying usage limits and preventing fraud and abuse: legitimate interest and performance of a contract (art. 7, IX and V).",
+          { when: "metrics", text: "Understanding product use through pseudonymous metrics: legitimate interest (art. 7, IX)." },
+          "Defending rights in judicial, administrative or arbitration proceedings: regular exercise of rights (art. 7, VI).",
+          "Sensitive data you include in your CV: processed only to provide the service you requested, based on the regular exercise of rights in a contract (art. 11, II, d). You can remove it at any time by editing or deleting the content.",
+          "Third-party data mentioned in CVs: legitimate interest (art. 7, IX), limited to the purpose above.",
+          "If we ask for consent for a specific purpose, the legal basis will be consent (art. 7, I), which you may revoke at any time.",
         ],
       },
       {
-        title: "4. Data minimisation and retention",
+        title: "4. Who we share data with",
         paragraphs: [
-          "Original uploaded files are not stored by default: the text is extracted in memory and the file is discarded. If file storage is enabled, originals are kept in private storage and deleted automatically after a limited period or when you request it.",
-          "Extracted text, CVs, versions, jobs and analyses are kept until you delete them or delete your account.",
-          "Deletion removes your data from the live service immediately. Copies may remain in encrypted infrastructure backups until those backups expire, at most {backupDays} days after deletion; they are not used to restore your data.",
-          "Payment records may be retained for the period required by law (LGPD art. 16, I).",
+          "Supabase: database, authentication and storage, in São Paulo, Brazil (sa-east-1 region).",
+          "Vercel: application hosting and technical access records, with the application's functions running in São Paulo, Brazil.",
+          "Stripe: payment processing. It receives your e-mail address, internal account identifier, plan and record of acceptance of the terms, plus the details you enter on the payment page.",
+          "E-mail provider used by the authentication service: receives your address to send sign-up confirmation and password recovery messages.",
+          { when: "noAi", text: "AI providers: your CV is not currently sent to any. Analysis and suggestions are generated by a rule-based engine on the service's servers." },
+          { when: "ai", text: "Anthropic (United States): AI provider. It receives the CV and job text to structure documents and write suggestions, cover letters and interview preparation." },
+          { when: "turnstile", text: "Cloudflare: anti-bot verification (Turnstile) on the access forms." },
+          { when: "ocr", text: "OCR service: receives scanned PDFs to recognise their text." },
+          { when: "metrics", text: "Internal NexForge management panel: receives only the pseudonymous events described in section 2." },
+          "Public authorities, when required by law or court order.",
+          "We do not sell your data, do not use it for advertising and do not send your CV or results to employers or recruiters: you decide who receives them.",
         ],
       },
       {
-        title: "5. Processors and international transfers",
+        title: "5. International transfers",
         paragraphs: [
-          "Supabase (database, authentication and file storage), hosted in São Paulo, Brazil (sa-east-1 region).",
-          "Vercel (application hosting and technical request logs), with the application's functions running in São Paulo, Brazil.",
-          "Anthropic (AI processing of CV and job text to structure documents and write suggestions), in the United States — only when AI features are run. Anthropic does not use this data to train its models.",
-          "Stripe (payment processing), Cloudflare Turnstile (anti-bot verification) and our transactional e-mail (SMTP) provider (account and service e-mails).",
-          "These providers act as processors (operadores) on our instructions, under contracts that include data protection obligations.",
-          "Some of these providers process data outside Brazil, mainly in the United States (in particular Anthropic, and Stripe, Cloudflare, Vercel and the e-mail provider for part of their processing). These international transfers follow art. 33 of the LGPD and rely on the standard contractual clauses approved by the ANPD (Resolution CD/ANPD No. 19/2024) and on the safeguards offered by each provider.",
-          "We do not sell your personal data and do not use it for advertising.",
+          "The database and the application's functions are in Brazil, but some providers are foreign companies, mainly from the United States, and may process data outside Brazil. These transfers take place when necessary to perform the contract with you (LGPD art. 33, IX).",
+          { when: "ai", text: "CV and job text is sent to the United States whenever an AI feature runs." },
         ],
       },
       {
-        title: "6. Your rights (LGPD art. 18)",
+        title: "6. Retention and deletion",
+        paragraphs: [
+          { when: "noStoredFiles", text: "Original file: not stored. It is read in memory to extract the text and then discarded; the extracted text is saved in your account." },
+          { when: "storedFiles", text: "Original file: kept in private storage. You can delete it in Documents, and a daily routine deletes originals older than {retentionDays} days. The extracted text stays saved in your account." },
+          "Extracted text, CVs, versions, jobs, analyses and other content: kept until you delete them or delete your account. There is no automatic deletion for inactivity.",
+          "Account deletion: once you confirm, we remove your account and the data linked to it from the service, cancel any active subscription and delete your customer record at Stripe. Charges already made remain recorded at Stripe as tax records.",
+          "Copies may remain in infrastructure backups until the end of their retention cycle, and technical records follow each provider's cycle.",
+          { when: "metrics", text: "Pseudonymous events already sent to the internal panel are not deleted with the account." },
+          "Data needed to comply with a legal obligation or defend rights may be kept for the applicable period (LGPD art. 16).",
+        ],
+      },
+      {
+        title: "7. Your rights (LGPD art. 18)",
         paragraphs: [
           "You have the right to: confirmation that we process your data; access; correction of incomplete, inaccurate or outdated data; anonymisation, blocking or deletion of unnecessary or excessive data or data processed unlawfully; portability; deletion of data processed with your consent; information about the entities with which we share data; information about the possibility of not consenting and its consequences; revocation of consent; and objection to processing that does not comply with the law.",
-          "Most of these can be exercised directly in the app: edit your profile and CVs, delete documents and analyses, and delete your account. For anything else, write to {email}.",
+          "In the service itself you can edit your profile and CVs; delete documents, versions, jobs and analyses; download a copy of your data as JSON on the Account page; and delete your account. For anything else, write to {email}. We will reply within the legal deadlines and may ask you to confirm you are the data subject.",
           "You may also file a petition with the National Data Protection Authority (ANPD) or with consumer protection bodies.",
         ],
       },
       {
-        title: "7. Security",
+        title: "8. Automated decisions (LGPD art. 20)",
         paragraphs: [
-          "Data is isolated per user with database access policies, transmitted over encrypted connections, and uploaded files are validated and never executed. Application logs do not contain CV content.",
+          "The compatibility index, requirement classification and suggestions are generated automatically. Index criteria: must-have requirements weigh 3 and nice-to-have requirements weigh 1; each requirement scores 1 if evidence is found, 0.5 if partial and 0 if not identified; ambiguous requirements are excluded.",
+          "The result is an estimate based on your CV text. It is not a probability of being hired, does not guarantee any outcome in a selection process, is not sent to employers and does not decide hiring.",
+          "You can correct your CV, accept, edit or reject each suggestion, and ask for information about the criteria or a review of an automated result at {email}.",
+        ],
+      },
+      {
+        title: "9. Cookies",
+        paragraphs: [
+          "We use only necessary cookies: the authentication service's session cookies (prefix sb-), to keep you logged in, and cvm_locale, which stores the interface language for up to 1 year. We do not use advertising cookies or third-party browser analytics.",
+          { when: "turnstile", text: "Cloudflare Turnstile may use its own browser features on the access forms." },
+          "The payment page belongs to Stripe, which applies its own cookie policy.",
+        ],
+      },
+      {
+        title: "10. Children and adolescents",
+        paragraphs: [
+          "CV Match is intended for people aged 18 or over. People under 18 should use it only with the participation of a legal guardian, and children should not use it. We do not verify age at sign-up. If you are responsible for a child or adolescent and have found an account, write to {email} to request deletion of the data.",
+        ],
+      },
+      {
+        title: "11. Security and incidents",
+        paragraphs: [
+          "We take technical measures to protect your data: per-user isolation with database access policies, encrypted connections, validation of uploaded files, which are only read and never executed, and application logs without CV content. No system is completely secure, so we cannot promise absolute security.",
           "If a security incident may cause relevant risk or damage to data subjects, we will notify the ANPD and the affected data subjects, as required by LGPD art. 48.",
         ],
       },
       {
-        title: "8. Cookies",
-        paragraphs: ["We use only cookies necessary for authentication and to remember your interface language."],
+        title: "12. Changes to this policy",
+        paragraphs: [
+          "We may update this policy to reflect changes in the service or the law. The date of the last update appears at the top of the page. Relevant changes will be announced on the site or by e-mail.",
+        ],
       },
     ] as LegalSection[],
   },
@@ -273,27 +330,30 @@ const en = {
         title: "1. The service",
         paragraphs: [
           "CV Match analyses the compatibility between your CV and a job description and suggests improvements. The compatibility index is an estimate produced by the tool, not a probability of being hired.",
+          { when: "noAi", text: "Analyses, suggestions, cover letters and interview preparation are currently generated by a rule-based engine, without generative AI: wording changes are limited, texts follow templates and CV content is not translated. On export, the chosen language applies to section headings." },
         ],
       },
       {
-        title: "2. No guarantees",
+        title: "2. No guarantee of results",
         paragraphs: [
-          "We do not guarantee interviews, job offers, hiring decisions or scores in applicant tracking systems (ATS). Recruitment decisions belong to each employer.",
+          "CV Match is a support tool. No result, index or suggestion is a guarantee of a job, interview, offer, success in a selection process or score in applicant tracking systems (ATS). Recruitment decisions belong to each employer.",
         ],
       },
       {
         title: "3. Your responsibility",
         paragraphs: [
-          "You are responsible for the truthfulness of your CV and of everything you submit to employers. Suggestions — including AI-generated ones — must be reviewed by you before use. Do not add skills, experience or results you do not have.",
+          "You are responsible for the truthfulness of your CV and of everything you submit to employers. Automatically generated suggestions must be reviewed by you before use. Do not add skills, experience or results you do not have.",
+          "To buy a paid plan you must be 18 or over or be assisted by a legal guardian.",
         ],
       },
       {
         title: "4. Plans, prices and payments",
         paragraphs: [
           "Prices are shown in Brazilian reais (R$) and are final prices. Payments are processed by Stripe, by card and, when offered at checkout, by Pix or boleto.",
-          "Analysis packs are one-time purchases of credits that are consumed when an analysis is run. A credit is returned automatically if an analysis fails for technical reasons.",
-          "Pro subscriptions renew at the end of each billing period (monthly or every 3 months) until cancelled. You can cancel at any time in the customer portal, available from the billing page; there are no further charges and access continues until the end of the paid period.",
-          "Prices, limits and plan benefits may change; changes do not affect periods or credits already paid.",
+          "Plans in this version of the terms: Free, at no cost, with 1 analysis and up to 5 suggestions; pack of 10 analyses, R$ 19,90 as a one-time payment; Pro monthly, R$ 29,90 per month, with 50 analyses per month; Pro quarterly, R$ 69,90 every 3 months, with 150 analyses every 3 months. Paid plans include all suggestions, cover letter and interview preparation. The amount charged is the one shown at checkout before payment.",
+          "Analysis packs are one-time purchases of credits that are consumed when an analysis is run, and they do not expire. A credit is returned automatically if an analysis fails for technical reasons.",
+          "Pro subscriptions renew at the end of each billing period (monthly or every 3 months) until cancelled. Analyses not used in a period do not carry over to the next. You can cancel at any time in the customer portal, available from the billing page; there are no further charges and access continues until the end of the paid period.",
+          "Prices, limits and plan benefits may change; changes do not affect periods or credits already paid. A price change on an active subscription requires prior notice, and you may cancel before it takes effect.",
         ],
       },
       {
@@ -303,12 +363,13 @@ const en = {
           "If no paid analysis (credit) from that purchase has been used, the refund is full. If some have been used, the refund is proportional to the analyses not used.",
           "For subscriptions, the same rule applies to the first charge: within 7 days of it you may withdraw and receive a full refund, or a proportional one if analyses from the subscription have already been used.",
           "To withdraw, send your request to {email}, identifying your account. The refund is made to the original payment method through Stripe, and the refunded credits are removed from your account.",
+          "If the law entitles you to a larger refund, the law prevails.",
         ],
       },
       {
         title: "6. Acceptable use",
         paragraphs: [
-          "Do not upload content you have no right to use, malicious files, or other people's CVs without their consent. Do not attempt to bypass limits, access other users' data or interfere with the service.",
+          "Do not upload content you have no right to use, malicious files, or other people's CVs without their authorisation. Do not attempt to bypass limits, access other users' data or interfere with the service.",
         ],
       },
       {
@@ -320,12 +381,13 @@ const en = {
       {
         title: "8. Termination and liability",
         paragraphs: [
-          "You may delete your account at any time. We may suspend accounts that breach these terms.",
+          "You may delete your account at any time on the Account page. Deletion cancels any active subscription and erases unused credits: if you are still within the withdrawal period, request your refund before deleting the account.",
+          "We may suspend accounts for serious breaches of these terms, stating the reason through the account's e-mail address. Suspension does not affect your consumer rights over amounts paid.",
           "Our liability follows Brazilian law. Nothing in these terms excludes or limits the rights guaranteed to you as a consumer by the Consumer Protection Code.",
         ],
       },
       {
-        title: "9. Governing law and jurisdiction",
+        title: "9. Governing law, jurisdiction and support",
         paragraphs: [
           "These terms are governed by the laws of the Federative Republic of Brazil, including the Consumer Protection Code (Law 8,078/1990) and the Marco Civil da Internet (Law 12,965/2014).",
           "Any dispute may be brought before the courts of the consumer's domicile (CDC art. 101, I). Before that, you can contact us at {email} to try to resolve it.",
@@ -492,6 +554,7 @@ const pt: MarketingDict = {
   legal: {
     contents: "Nesta página",
     updated: "Última atualização",
+    updatedDate: "04/11/2026",
   },
   legalNotice: {
     title: "Informações legais",
@@ -500,7 +563,8 @@ const pt: MarketingDict = {
     sections: [
       {
         title: "1. Fornecedor",
-        paragraphs: ["Nome: {operator}", "CPF: {taxId}", "Endereço físico: {address}", "Endereço eletrônico e atendimento: {email}"],
+        pending: "Identificação do fornecedor (nome, CPF ou CNPJ e endereço físico): publicação pendente. Até lá, use o contato abaixo para qualquer solicitação.",
+        paragraphs: ["Nome: {operator}", "{taxLabel}: {taxId}", "Endereço físico: {address}", "Endereço eletrônico e atendimento: {email}"],
       },
       {
         title: "2. Finalidade",
@@ -511,7 +575,7 @@ const pt: MarketingDict = {
       {
         title: "3. Contratação e direito de arrependimento",
         paragraphs: [
-          "Antes do pagamento, o checkout mostra o plano, o que ele inclui, o preço final em reais, as formas de pagamento disponíveis e, nas assinaturas, a periodicidade da renovação.",
+          "Antes do pagamento, o checkout mostra o plano, o preço final em reais, as formas de pagamento disponíveis e, nas assinaturas, a periodicidade da renovação.",
           "Você pode desistir da compra em até 7 dias corridos a contar do pagamento (art. 49 do Código de Defesa do Consumidor). As condições e a forma de pedir estão na seção 5 dos termos de uso. Solicitações: {email}.",
         ],
       },
@@ -524,76 +588,124 @@ const pt: MarketingDict = {
   privacy: {
     title: "Política de privacidade",
     intro:
-      "Esta política explica como o CV Match trata dados pessoais quando você usa o serviço, de acordo com a Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018). Currículos contêm dados pessoais, por isso coletamos o mínimo possível e guardamos apenas pelo tempo necessário.",
+      "Esta política explica quais dados pessoais o CV Match trata, para quê, com quem os compartilha e como você exerce seus direitos, nos termos da Lei Geral de Proteção de Dados Pessoais (LGPD, Lei nº 13.709/2018). O serviço é oferecido no Brasil.",
     sections: [
       {
-        title: "1. Controlador e contato",
+        title: "1. Controlador e encarregado",
+        pending: "Identificação do controlador (nome, CPF ou CNPJ e endereço): publicação pendente. Até lá, o atendimento é feito pelo contato abaixo.",
         paragraphs: [
-          "O controlador dos seus dados pessoais é {operator} (CPF {taxId}), {address}. Para qualquer solicitação ou dúvida sobre privacidade, escreva para {email}.",
-          "Como agente de tratamento de pequeno porte (Resolução CD/ANPD nº 2/2022), o controlador não é obrigado a indicar um encarregado. O canal de comunicação com os titulares e com a ANPD é {email}.",
+          "Controlador: {operator}",
+          "{taxLabel}: {taxId}",
+          "Endereço: {address}",
+          "Contato do encarregado pelo tratamento de dados pessoais (art. 41 da LGPD) e canal para titulares e para a ANPD: {email}.",
         ],
       },
       {
-        title: "2. Dados tratados",
+        title: "2. Dados que tratamos",
         paragraphs: [
-          "Dados de cadastro: e-mail e dados de autenticação.",
-          "Dados de perfil que você informa: nome, título profissional, localização, preferências e banco de competências.",
-          "Conteúdo do currículo: texto extraído dos documentos que você envia ou cola, o currículo estruturado que você revisa e as versões que salva.",
-          "Descrições de vagas que você cola, análises, sugestões, cartas de apresentação e preparação para entrevistas geradas para você.",
-          "Dados de cobrança: plano, créditos e status da assinatura. Os dados do cartão e de outros meios de pagamento são tratados pela Stripe e nunca chegam aos nossos servidores.",
-          "Verificação contra abusos: nos formulários protegidos, o Cloudflare Turnstile analisa sinais técnicos do navegador e da conexão para confirmar que a solicitação vem de uma pessoa.",
-          "Registros técnicos de uso (por exemplo, número de análises e tokens de IA consumidos), que nunca incluem o conteúdo do currículo. Métricas agregadas do produto (quais recursos são usados, eventos de cadastro e de plano) são registradas com um identificador pseudonimizado, sem seu nome, e-mail ou qualquer conteúdo.",
-          "Não precisamos de dados pessoais sensíveis (como saúde, religião, opinião política ou origem racial ou étnica). Recomendamos não incluí-los no currículo, a menos que sejam relevantes para a vaga.",
+          "Cadastro: nome, e-mail e senha (processada pelo serviço de autenticação), além do registro de aceite dos termos.",
+          "Perfil: título profissional, localização, locais de interesse, setor, preferências de idioma e de modelo de currículo e banco de competências.",
+          "Currículo: nome, tipo e tamanho do arquivo enviado; texto extraído do arquivo ou colado por você; dados estruturados (contato, experiências, formação, competências, projetos, idiomas e certificações) e as versões que você salva.",
+          "Vagas: título, empresa, local, link, texto do anúncio e requisitos identificados.",
+          "Resultados: índice de compatibilidade, classificação dos requisitos, trechos usados como evidência, sugestões e suas decisões sobre elas, cartas de apresentação, preparação para entrevista e o registro das exportações (formato, modelo e idioma).",
+          "Cobrança: plano, créditos, status da assinatura, identificador de cliente na Stripe e aceite dos termos na compra. Dados de cartão, Pix ou boleto são informados na página de pagamento da Stripe e não passam pelos nossos servidores.",
+          "Uso e dados técnicos: contagem de análises e outras ações, usadas para aplicar limites. A infraestrutura de hospedagem e de autenticação recebe dados de conexão (como endereço IP, navegador, data e hora) ao atender cada acesso.",
+          { when: "metrics", text: "Métricas internas do produto: eventos de uso (como cadastro, login, importação de currículo, análise, exportação, escolha, mudança ou cancelamento de plano, valor pago e exclusão de conta), ligados a um identificador pseudonimizado, sem nome, e-mail, texto de currículo ou de vaga. Dado pseudonimizado continua sendo dado pessoal." },
+          { when: "turnstile", text: "Verificação contra abusos: nos formulários de login, cadastro e recuperação de senha, o Cloudflare Turnstile analisa sinais técnicos do navegador e da conexão para confirmar que a solicitação vem de uma pessoa." },
+          "Dados sensíveis: não pedimos nem precisamos de dados como saúde, deficiência, religião, opinião política, filiação sindical ou origem racial ou étnica, mas um currículo pode contê-los. Recomendamos retirá-los, a menos que sejam relevantes para a vaga. O que estiver no texto enviado é tratado como o restante do currículo.",
+          "Dados de terceiros: currículos e vagas podem citar outras pessoas (referências, ex-gestores, colegas). Inclua contatos de terceiros apenas se puder compartilhá-los. Essas informações são usadas somente para prestar o serviço a você, e a pessoa citada pode nos procurar pelo contato {email}.",
         ],
       },
       {
-        title: "3. Finalidades e bases legais (art. 7º da LGPD)",
+        title: "3. Finalidades e bases legais",
         paragraphs: [
-          "Prestar o serviço que você solicita: extrair, analisar e melhorar seu currículo e exportar documentos — execução de contrato (art. 7º, V).",
-          "Processar pagamentos e prevenir fraudes e abusos, inclusive a verificação anti-bot — execução de contrato e legítimo interesse (art. 7º, V e IX).",
-          "Cumprir obrigações legais e regulatórias, como registros contábeis e fiscais dos pagamentos — cumprimento de obrigação legal (art. 7º, II).",
-          "Quando pedirmos seu consentimento para uma finalidade específica, a base legal é o consentimento (art. 7º, I), que você pode revogar a qualquer momento.",
+          "Prestar o serviço que você pede (importar, analisar e melhorar o currículo, gerar conteúdos, exportar documentos e manter sua conta): execução de contrato (art. 7º, V, da LGPD).",
+          "Processar pagamentos e manter registros contábeis e fiscais: execução de contrato e cumprimento de obrigação legal (art. 7º, V e II).",
+          "Garantir a segurança, aplicar limites de uso e prevenir fraudes e abusos: legítimo interesse e execução de contrato (art. 7º, IX e V).",
+          { when: "metrics", text: "Entender o uso do produto por métricas pseudonimizadas: legítimo interesse (art. 7º, IX)." },
+          "Defender direitos em processos judiciais, administrativos ou arbitrais: exercício regular de direitos (art. 7º, VI).",
+          "Dados sensíveis que você incluir no currículo: tratados apenas para prestar o serviço que você pediu, com base no exercício regular de direitos em contrato (art. 11, II, d). Você pode removê-los a qualquer momento editando ou excluindo o conteúdo.",
+          "Dados de terceiros citados em currículos: legítimo interesse (art. 7º, IX), limitado à finalidade acima.",
+          "Se pedirmos consentimento para uma finalidade específica, a base será o consentimento (art. 7º, I), que você poderá revogar a qualquer momento.",
         ],
       },
       {
-        title: "4. Minimização e retenção",
+        title: "4. Com quem compartilhamos",
         paragraphs: [
-          "Por padrão, os arquivos originais não são armazenados: o texto é extraído em memória e o arquivo é descartado. Se o armazenamento estiver ativado, os originais ficam em armazenamento privado e são excluídos automaticamente após um período limitado ou quando você pedir.",
-          "Texto extraído, currículos, versões, vagas e análises ficam guardados até você excluí-los ou excluir a conta.",
-          "A exclusão remove seus dados do serviço imediatamente. Cópias podem permanecer em backups criptografados da infraestrutura até expirarem, no máximo {backupDays} dias após a exclusão; elas não são usadas para restaurar seus dados.",
-          "Registros de pagamento podem ser mantidos pelo prazo exigido por lei (art. 16, I, da LGPD).",
+          "Supabase: banco de dados, autenticação e armazenamento, em São Paulo, Brasil (região sa-east-1).",
+          "Vercel: hospedagem da aplicação e registros técnicos de acesso, com as funções da aplicação executadas em São Paulo, Brasil.",
+          "Stripe: processamento de pagamentos. Recebe seu e-mail, identificador interno da conta, plano e registro de aceite dos termos, além dos dados que você informar na página de pagamento.",
+          "Provedor de e-mail usado pelo serviço de autenticação: recebe seu endereço para enviar confirmação de cadastro e recuperação de senha.",
+          { when: "noAi", text: "Provedores de IA: hoje o seu currículo não é enviado a nenhum. A análise e as sugestões são geradas por um motor de regras nos servidores do serviço." },
+          { when: "ai", text: "Anthropic (Estados Unidos): provedor de IA. Recebe o texto do currículo e da vaga para estruturar documentos e redigir sugestões, cartas e preparação para entrevista." },
+          { when: "turnstile", text: "Cloudflare: verificação anti-bot (Turnstile) nos formulários de acesso." },
+          { when: "ocr", text: "Serviço de OCR: recebe PDFs digitalizados para reconhecer o texto." },
+          { when: "metrics", text: "Painel interno de gestão NexForge: recebe apenas os eventos pseudonimizados descritos na seção 2." },
+          "Autoridades públicas, quando houver obrigação legal ou ordem judicial.",
+          "Não vendemos seus dados, não os usamos para publicidade e não enviamos seu currículo ou seus resultados a empregadores ou recrutadores: é você quem decide para quem enviar.",
         ],
       },
       {
-        title: "5. Operadores e transferência internacional",
+        title: "5. Transferência internacional",
         paragraphs: [
-          "Supabase (banco de dados, autenticação e armazenamento de arquivos), hospedado em São Paulo, Brasil (região sa-east-1).",
-          "Vercel (hospedagem da aplicação e logs técnicos de requisições), com as funções da aplicação executadas em São Paulo, Brasil.",
-          "Anthropic (processamento por IA do texto do currículo e da vaga para estruturar documentos e redigir sugestões), nos Estados Unidos — somente quando os recursos de IA são usados. A Anthropic não usa esses dados para treinar seus modelos.",
-          "Stripe (processamento de pagamentos), Cloudflare Turnstile (verificação anti-bot) e nosso provedor de e-mail transacional (SMTP), para e-mails da conta e do serviço.",
-          "Esses fornecedores atuam como operadores, seguindo nossas instruções, com contratos que incluem obrigações de proteção de dados.",
-          "Alguns desses fornecedores tratam dados fora do Brasil, principalmente nos Estados Unidos (em especial a Anthropic e, em parte do tratamento, Stripe, Cloudflare, Vercel e o provedor de e-mail). Essas transferências internacionais seguem o art. 33 da LGPD e se baseiam nas cláusulas-padrão contratuais aprovadas pela ANPD (Resolução CD/ANPD nº 19/2024) e nas garantias oferecidas por cada fornecedor.",
-          "Não vendemos seus dados pessoais e não os usamos para publicidade.",
+          "O banco de dados e as funções da aplicação ficam no Brasil, mas alguns fornecedores são empresas estrangeiras, principalmente dos Estados Unidos, e podem tratar dados fora do Brasil. Essas transferências ocorrem quando necessárias para executar o contrato com você (art. 33, IX, da LGPD).",
+          { when: "ai", text: "O texto do currículo e da vaga é enviado aos Estados Unidos sempre que um recurso de IA é executado." },
         ],
       },
       {
-        title: "6. Seus direitos (art. 18 da LGPD)",
+        title: "6. Retenção e exclusão",
         paragraphs: [
-          "Você tem direito a: confirmação da existência de tratamento; acesso aos dados; correção de dados incompletos, inexatos ou desatualizados; anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em desconformidade com a lei; portabilidade; eliminação dos dados tratados com seu consentimento; informação sobre as entidades com as quais compartilhamos dados; informação sobre a possibilidade de não consentir e suas consequências; revogação do consentimento; e oposição a tratamento realizado em desconformidade com a lei.",
-          "A maioria desses direitos pode ser exercida no próprio app: edite seu perfil e currículos, exclua documentos e análises e exclua sua conta. Para o resto, escreva para {email}.",
+          { when: "noStoredFiles", text: "Arquivo original: não é guardado. Ele é lido em memória para extrair o texto e depois descartado; o texto extraído fica salvo na sua conta." },
+          { when: "storedFiles", text: "Arquivo original: fica em armazenamento privado. Você pode excluí-lo em Documentos, e uma rotina diária apaga os originais com mais de {retentionDays} dias. O texto extraído continua salvo na sua conta." },
+          "Texto extraído, currículos, versões, vagas, análises e demais conteúdos: ficam guardados até você excluí-los ou excluir a conta. Não há exclusão automática por inatividade.",
+          "Exclusão da conta: ao confirmar, removemos sua conta e os dados ligados a ela do serviço, cancelamos a assinatura ativa e excluímos seu cadastro de cliente na Stripe. As cobranças já realizadas continuam registradas na Stripe, como registros fiscais.",
+          "Cópias podem permanecer em backups da infraestrutura até o fim do ciclo de retenção deles, e os registros técnicos seguem o ciclo dos respectivos fornecedores.",
+          { when: "metrics", text: "Eventos pseudonimizados já enviados ao painel interno não são apagados com a conta." },
+          "Dados necessários para cumprir obrigação legal ou defender direitos podem ser mantidos pelo prazo aplicável (art. 16 da LGPD).",
+        ],
+      },
+      {
+        title: "7. Seus direitos (art. 18 da LGPD)",
+        paragraphs: [
+          "Você tem direito a: confirmação da existência de tratamento; acesso aos dados; correção de dados incompletos, inexatos ou desatualizados; anonimização, bloqueio ou eliminação de dados desnecessários, excessivos ou tratados em desconformidade com a lei; portabilidade; eliminação dos dados tratados com seu consentimento; informação sobre as entidades com as quais compartilhamos dados; informação sobre a possibilidade de não consentir e suas consequências; revogação do consentimento; e oposição a tratamento em desconformidade com a lei.",
+          "No próprio serviço você pode editar perfil e currículos; excluir documentos, versões, vagas e análises; baixar uma cópia dos seus dados em formato JSON na página Conta; e excluir a conta. Para o restante, escreva para {email}. Responderemos nos prazos legais e poderemos pedir confirmação de que você é o titular.",
           "Você também pode peticionar à Autoridade Nacional de Proteção de Dados (ANPD) ou aos órgãos de defesa do consumidor.",
         ],
       },
       {
-        title: "7. Segurança",
+        title: "8. Decisões automatizadas (art. 20 da LGPD)",
         paragraphs: [
-          "Os dados são isolados por usuário com políticas de acesso no banco de dados, trafegam por conexões criptografadas, e os arquivos enviados são validados e nunca executados. Os logs da aplicação não contêm conteúdo de currículos.",
+          "O índice de compatibilidade, a classificação dos requisitos e as sugestões são gerados automaticamente. Critérios do índice: requisitos obrigatórios têm peso 3 e desejáveis, peso 1; cada requisito vale 1 se houver evidência, 0,5 se parcial e 0 se não identificado; requisitos ambíguos ficam de fora.",
+          "O resultado é uma estimativa feita a partir do texto do currículo. Não é a probabilidade de contratação, não garante nenhum resultado em processos seletivos, não é enviado a empregadores e não decide contratação.",
+          "Você pode corrigir o currículo, aceitar, editar ou rejeitar cada sugestão, e pedir informações sobre os critérios ou a revisão de um resultado automatizado por {email}.",
+        ],
+      },
+      {
+        title: "9. Cookies",
+        paragraphs: [
+          "Usamos apenas cookies necessários: os de sessão do serviço de autenticação (prefixo sb-), para manter você conectado, e o cvm_locale, que guarda o idioma da interface por até 1 ano. Não usamos cookies de publicidade nem ferramentas de analytics de terceiros no navegador.",
+          { when: "turnstile", text: "O Cloudflare Turnstile pode usar recursos próprios do navegador nos formulários de acesso." },
+          "A página de pagamento pertence à Stripe, que aplica sua própria política de cookies.",
+        ],
+      },
+      {
+        title: "10. Crianças e adolescentes",
+        paragraphs: [
+          "O CV Match é destinado a maiores de 18 anos. Pessoas com menos de 18 anos só devem usá-lo com a participação do responsável legal, e crianças não devem usá-lo. Não verificamos a idade no cadastro. Se você é responsável por uma criança ou adolescente e identificou uma conta, escreva para {email} para pedirmos a exclusão dos dados.",
+        ],
+      },
+      {
+        title: "11. Segurança e incidentes",
+        paragraphs: [
+          "Adotamos medidas técnicas para proteger seus dados: isolamento por usuário com políticas de acesso no banco de dados, conexões criptografadas, validação dos arquivos enviados, que são apenas lidos e nunca executados, e registros da aplicação sem o conteúdo do currículo. Nenhum sistema é totalmente seguro, por isso não podemos prometer segurança absoluta.",
           "Se ocorrer um incidente de segurança que possa acarretar risco ou dano relevante aos titulares, comunicaremos a ANPD e os titulares afetados, conforme o art. 48 da LGPD.",
         ],
       },
       {
-        title: "8. Cookies",
-        paragraphs: ["Usamos apenas cookies necessários para autenticação e para lembrar o idioma da interface."],
+        title: "12. Alterações desta política",
+        paragraphs: [
+          "Podemos atualizar esta política para refletir mudanças no serviço ou na lei. A data da última atualização aparece no topo da página. Mudanças relevantes serão informadas no site ou por e-mail.",
+        ],
       },
     ],
   },
@@ -605,27 +717,30 @@ const pt: MarketingDict = {
         title: "1. O serviço",
         paragraphs: [
           "O CV Match analisa a compatibilidade entre seu currículo e uma descrição de vaga e sugere melhorias. O índice de compatibilidade é uma estimativa da ferramenta, não uma probabilidade de contratação.",
+          { when: "noAi", text: "Hoje as análises, sugestões, cartas e preparações para entrevista são geradas por um motor de regras, sem IA generativa: as mudanças de redação são pontuais, os textos seguem modelos e o conteúdo do currículo não é traduzido. Na exportação, o idioma escolhido se aplica aos títulos das seções." },
         ],
       },
       {
-        title: "2. Sem garantias",
+        title: "2. Sem garantias de resultado",
         paragraphs: [
-          "Não garantimos entrevistas, ofertas de emprego, decisões de contratação ou pontuação em sistemas de recrutamento (ATS). As decisões de seleção pertencem a cada empregador.",
+          "O CV Match é uma ferramenta de apoio. Nenhum resultado, índice ou sugestão é garantia de emprego, entrevista, oferta, aprovação em processo seletivo ou pontuação em sistemas de recrutamento (ATS). As decisões de seleção pertencem a cada empregador.",
         ],
       },
       {
         title: "3. Sua responsabilidade",
         paragraphs: [
-          "Você é responsável pela veracidade do seu currículo e de tudo o que enviar a empregadores. As sugestões — inclusive as geradas por IA — devem ser revisadas por você antes do uso. Não inclua competências, experiências ou resultados que você não tem.",
+          "Você é responsável pela veracidade do seu currículo e de tudo o que enviar a empregadores. As sugestões geradas automaticamente devem ser revisadas por você antes do uso. Não inclua competências, experiências ou resultados que você não tem.",
+          "Para contratar planos pagos, você precisa ter 18 anos ou mais ou estar assistido pelo responsável legal.",
         ],
       },
       {
         title: "4. Planos, preços e pagamentos",
         paragraphs: [
           "Os preços são exibidos em reais (R$) e são preços finais. Os pagamentos são processados pela Stripe, por cartão e, quando oferecidos no checkout, por Pix ou boleto.",
-          "Pacotes de análises são compras únicas de créditos, consumidos quando uma análise é executada. O crédito é devolvido automaticamente se uma análise falhar por motivo técnico.",
-          "A assinatura Pro renova ao fim de cada período (mensal ou a cada 3 meses) até ser cancelada. Você pode cancelar a qualquer momento no portal do cliente, acessível pela página de cobrança; não há novas cobranças e o acesso continua até o fim do período pago.",
-          "Preços, limites e benefícios dos planos podem mudar; as mudanças não afetam períodos ou créditos já pagos.",
+          "Planos nesta versão dos termos: Grátis, sem custo, com 1 análise e até 5 sugestões; Pacote 10 análises, R$ 19,90 em pagamento único; Pro mensal, R$ 29,90 por mês, com 50 análises por mês; Pro trimestral, R$ 69,90 a cada 3 meses, com 150 análises a cada 3 meses. Os planos pagos incluem todas as sugestões, carta de apresentação e preparação para entrevista. O valor cobrado é o exibido no checkout antes do pagamento.",
+          "Pacotes de análises são compras únicas de créditos, consumidos quando uma análise é executada, e não têm prazo de validade. O crédito é devolvido automaticamente se uma análise falhar por motivo técnico.",
+          "A assinatura Pro renova ao fim de cada período (mensal ou a cada 3 meses) até ser cancelada. As análises não usadas no período não passam para o seguinte. Você pode cancelar a qualquer momento no portal do cliente, acessível pela página de cobrança; não há novas cobranças e o acesso continua até o fim do período pago.",
+          "Preços, limites e benefícios dos planos podem mudar; as mudanças não afetam períodos ou créditos já pagos. Uma alteração de preço de assinatura ativa exige aviso prévio, e você poderá cancelar antes que ela passe a valer.",
         ],
       },
       {
@@ -635,12 +750,13 @@ const pt: MarketingDict = {
           "Se nenhuma análise paga (crédito) daquela compra tiver sido usada, o reembolso é integral. Se parte tiver sido usada, o reembolso é proporcional às análises não utilizadas.",
           "Nas assinaturas, a mesma regra vale para a primeira cobrança: em até 7 dias dela, você pode desistir e receber o reembolso integral, ou proporcional se já tiver usado análises da assinatura.",
           "Para desistir, envie o pedido para {email}, identificando sua conta. O reembolso é feito no mesmo meio de pagamento usado na compra, por meio da Stripe, e os créditos reembolsados são removidos da sua conta.",
+          "Se a lei garantir a você um reembolso maior, vale o que a lei determinar.",
         ],
       },
       {
         title: "6. Uso aceitável",
         paragraphs: [
-          "Não envie conteúdo que você não tem direito de usar, arquivos maliciosos ou currículos de outras pessoas sem consentimento. Não tente contornar limites, acessar dados de outros usuários ou interferir no serviço.",
+          "Não envie conteúdo que você não tem direito de usar, arquivos maliciosos ou currículos de outras pessoas sem autorização. Não tente contornar limites, acessar dados de outros usuários ou interferir no serviço.",
         ],
       },
       {
@@ -652,12 +768,13 @@ const pt: MarketingDict = {
       {
         title: "8. Encerramento e responsabilidade",
         paragraphs: [
-          "Você pode excluir sua conta a qualquer momento. Podemos suspender contas que violem estes termos.",
+          "Você pode excluir sua conta a qualquer momento na página Conta. A exclusão cancela a assinatura ativa e apaga os créditos não usados: se ainda estiver dentro do prazo de arrependimento, peça o reembolso antes de excluir a conta.",
+          "Podemos suspender contas em caso de violação grave destes termos, informando o motivo pelo e-mail da conta. A suspensão não afasta os seus direitos de consumidor sobre valores pagos.",
           "Nossa responsabilidade segue a legislação brasileira. Nada nestes termos exclui ou limita os direitos garantidos a você como consumidor pelo Código de Defesa do Consumidor.",
         ],
       },
       {
-        title: "9. Lei aplicável e foro",
+        title: "9. Lei aplicável, foro e atendimento",
         paragraphs: [
           "Estes termos são regidos pelas leis da República Federativa do Brasil, incluindo o Código de Defesa do Consumidor (Lei nº 8.078/1990) e o Marco Civil da Internet (Lei nº 12.965/2014).",
           "Eventuais litígios podem ser propostos no foro do domicílio do consumidor (art. 101, I, do CDC). Antes disso, você pode falar conosco em {email} para tentarmos resolver a questão.",
@@ -822,27 +939,29 @@ const es: MarketingDict = {
   legal: {
     contents: "En esta página",
     updated: "Última actualización",
+    updatedDate: "04/11/2026",
   },
   legalNotice: {
     title: "Aviso legal",
     intro:
-      "Información sobre el proveedor de este servicio, conforme al Decreto brasileño n.º 7.962/2013 (comercio electrónico) y al Código de Defensa del Consumidor de Brasil (Ley n.º 8.078/1990).",
+      "Información sobre el proveedor de este servicio, conforme al Decreto brasileño n.º 7.962/2013 (comercio electrónico) y al Código de Defensa del Consumidor (Ley n.º 8.078/1990).",
     sections: [
       {
         title: "1. Proveedor",
-        paragraphs: ["Nombre: {operator}", "CPF: {taxId}", "Dirección física: {address}", "Dirección electrónica y atención al cliente: {email}"],
+        pending: "Identificación del proveedor (nombre, CPF o CNPJ y dirección física): publicación pendiente. Mientras tanto, usa el contacto de abajo para cualquier solicitud.",
+        paragraphs: ["Nombre: {operator}", "{taxLabel}: {taxId}", "Dirección física: {address}", "Dirección electrónica y atención: {email}"],
       },
       {
         title: "2. Objeto",
         paragraphs: [
-          "CV Match es un servicio en línea que compara currículums con descripciones de ofertas y sugiere mejoras. Se ofrece en Brasil, con precios en reales brasileños (R$). Su uso se rige por los términos de uso y la política de privacidad.",
+          "CV Match es un servicio en línea que compara currículums con descripciones de ofertas y sugiere mejoras. Se ofrece en Brasil, con precios en reales (R$). Su uso se rige por los términos de uso y la política de privacidad.",
         ],
       },
       {
         title: "3. Contratación y derecho de arrepentimiento",
         paragraphs: [
-          "Antes del pago, el checkout muestra el plan, lo que incluye, el precio final en reales, los medios de pago disponibles y, en las suscripciones, la periodicidad de renovación.",
-          "Puedes desistir de una compra dentro de los 7 días corridos siguientes al pago (art. 49 del Código de Defensa del Consumidor). Las condiciones y la forma de solicitarlo se describen en la sección 5 de los términos de uso. Solicitudes: {email}.",
+          "Antes del pago, el checkout muestra el plan, el precio final en reales, los medios de pago disponibles y, en las suscripciones, la periodicidad de la renovación.",
+          "Puedes desistir de una compra dentro de los 7 días corridos siguientes al pago (art. 49 del Código de Defensa del Consumidor). Las condiciones y la forma de solicitarlo están en la sección 5 de los términos de uso. Solicitudes: {email}.",
         ],
       },
       {
@@ -854,108 +973,159 @@ const es: MarketingDict = {
   privacy: {
     title: "Política de privacidad",
     intro:
-      "Esta política explica cómo CV Match trata los datos personales cuando usas el servicio, de acuerdo con la Ley General de Protección de Datos Personales de Brasil (LGPD, Ley n.º 13.709/2018). Los currículums contienen datos personales, así que recopilamos lo mínimo y lo conservamos solo el tiempo necesario.",
+      "Esta política explica qué datos personales trata CV Match, para qué, con quién los comparte y cómo puedes ejercer tus derechos, conforme a la Ley General de Protección de Datos Personales de Brasil (LGPD, Ley n.º 13.709/2018). El servicio se ofrece en Brasil.",
     sections: [
       {
-        title: "1. Controlador y contacto",
+        title: "1. Controlador y encargado",
+        pending: "Identificación del controlador (nombre, CPF o CNPJ y dirección): publicación pendiente. Mientras tanto, la atención se realiza por el contacto de abajo.",
         paragraphs: [
-          "El controlador de tus datos personales es {operator} (CPF {taxId}), {address}. Para cualquier solicitud o duda sobre privacidad, escribe a {email}.",
-          "Como agente de tratamiento de pequeño porte (Resolución CD/ANPD n.º 2/2022), el controlador no está obligado a designar un encargado de protección de datos. El canal de comunicación con los titulares y con la ANPD es {email}.",
+          "Controlador: {operator}",
+          "{taxLabel}: {taxId}",
+          "Dirección: {address}",
+          "Contacto del encargado del tratamiento de datos personales (encarregado, art. 41 de la LGPD) y canal para titulares y para la ANPD: {email}.",
         ],
       },
       {
         title: "2. Datos que tratamos",
         paragraphs: [
-          "Datos de cuenta: correo electrónico y datos de autenticación.",
-          "Datos de perfil que ingresas: nombre, título profesional, ubicación, preferencias y banco de competencias.",
-          "Contenido del currículum: texto extraído de los documentos que subes o pegas, el currículum estructurado que revisas y las versiones que guardas.",
-          "Descripciones de ofertas que pegas, análisis, sugerencias, cartas de presentación y preparación de entrevistas generadas para ti.",
-          "Datos de facturación: plan, créditos y estado de la suscripción. Los datos de la tarjeta y de otros medios de pago los gestiona Stripe y nunca llegan a nuestros servidores.",
-          "Verificación contra abusos: en los formularios protegidos, Cloudflare Turnstile analiza señales técnicas del navegador y de la conexión para confirmar que la solicitud proviene de una persona.",
-          "Registros técnicos de uso (p. ej. número de análisis y tokens de IA consumidos), que nunca incluyen el contenido del currículum. Las métricas agregadas del producto (qué funciones se usan, eventos de registro y de plan) se registran con un identificador seudonimizado, sin tu nombre, e-mail ni ningún contenido.",
-          "No necesitamos datos personales sensibles (como salud, religión, opinión política u origen racial o étnico). Te recomendamos no incluirlos en tu currículum, salvo que sean relevantes para la oferta.",
+          "Registro: nombre, correo electrónico y contraseña (procesada por el servicio de autenticación), además del registro de aceptación de los términos.",
+          "Perfil: título profesional, ubicación, lugares de interés, sector, preferencias de idioma y de plantilla de currículum y banco de competencias.",
+          "Currículum: nombre, tipo y tamaño del archivo enviado; texto extraído del archivo o pegado por ti; datos estructurados (contacto, experiencia, formación, competencias, proyectos, idiomas y certificaciones) y las versiones que guardas.",
+          "Ofertas: título, empresa, ubicación, enlace, texto del anuncio y requisitos identificados.",
+          "Resultados: índice de compatibilidad, clasificación de los requisitos, fragmentos usados como evidencia, sugerencias y tus decisiones sobre ellas, cartas de presentación, preparación para entrevistas y el registro de las exportaciones (formato, plantilla e idioma).",
+          "Cobro: plan, créditos, estado de la suscripción, identificador de cliente en Stripe y aceptación de los términos en la compra. Los datos de tarjeta, Pix o boleto se introducen en la página de pago de Stripe y no pasan por nuestros servidores.",
+          "Uso y datos técnicos: recuento de análisis y otras acciones, usado para aplicar límites. La infraestructura de alojamiento y de autenticación recibe datos de conexión (como dirección IP, navegador, fecha y hora) al atender cada acceso.",
+          { when: "metrics", text: "Métricas internas del producto: eventos de uso (como registro, inicio de sesión, importación de currículum, análisis, exportación, elección, cambio o cancelación de plan, importe pagado y eliminación de cuenta), vinculados a un identificador seudonimizado, sin tu nombre, correo ni texto del currículum o de la oferta. Un dato seudonimizado sigue siendo dato personal." },
+          { when: "turnstile", text: "Verificación contra abusos: en los formularios de inicio de sesión, registro y recuperación de contraseña, Cloudflare Turnstile analiza señales técnicas del navegador y de la conexión para confirmar que la solicitud viene de una persona." },
+          "Datos sensibles: no pedimos ni necesitamos datos como salud, discapacidad, religión, opinión política, afiliación sindical u origen racial o étnico, pero un currículum puede contenerlos. Recomendamos quitarlos, salvo que sean relevantes para la oferta. Lo que esté en el texto enviado se trata como el resto del currículum.",
+          "Datos de terceros: los currículums y las ofertas pueden mencionar a otras personas (referencias, antiguos responsables, colegas). Incluye datos de contacto de terceros solo si puedes compartirlos. Esa información se usa únicamente para prestarte el servicio, y la persona mencionada puede escribirnos a {email}.",
         ],
       },
       {
-        title: "3. Finalidades y bases legales (art. 7 de la LGPD)",
+        title: "3. Finalidades y bases legales",
         paragraphs: [
-          "Prestar el servicio que solicitas: extraer, analizar y mejorar tu currículum y exportar documentos — ejecución de un contrato (art. 7, V).",
-          "Procesar pagos y prevenir fraudes y abusos, incluida la verificación anti-bots — ejecución de un contrato e interés legítimo (art. 7, V y IX).",
-          "Cumplir obligaciones legales y regulatorias, como los registros contables y fiscales de los pagos — cumplimiento de una obligación legal (art. 7, II).",
-          "Cuando te pidamos el consentimiento para una finalidad específica, la base legal es el consentimiento (art. 7, I), que puedes revocar en cualquier momento.",
+          "Prestar el servicio que solicitas (importar, analizar y mejorar tu currículum, generar contenidos, exportar documentos y mantener tu cuenta): ejecución de contrato (art. 7, V, de la LGPD).",
+          "Procesar pagos y mantener registros contables y fiscales: ejecución de contrato y cumplimiento de obligación legal (art. 7, V y II).",
+          "Garantizar la seguridad, aplicar límites de uso y prevenir fraudes y abusos: interés legítimo y ejecución de contrato (art. 7, IX y V).",
+          { when: "metrics", text: "Entender el uso del producto mediante métricas seudonimizadas: interés legítimo (art. 7, IX)." },
+          "Defender derechos en procesos judiciales, administrativos o arbitrales: ejercicio regular de derechos (art. 7, VI).",
+          "Datos sensibles que incluyas en tu currículum: tratados solo para prestar el servicio que pediste, con base en el ejercicio regular de derechos en contrato (art. 11, II, d). Puedes quitarlos en cualquier momento editando o eliminando el contenido.",
+          "Datos de terceros mencionados en currículums: interés legítimo (art. 7, IX), limitado a la finalidad anterior.",
+          "Si pedimos tu consentimiento para una finalidad específica, la base legal será el consentimiento (art. 7, I), que podrás revocar en cualquier momento.",
         ],
       },
       {
-        title: "4. Minimización y conservación",
+        title: "4. Con quién compartimos datos",
         paragraphs: [
-          "Por defecto no se guardan los archivos originales: el texto se extrae en memoria y el archivo se descarta. Si el almacenamiento está activado, los originales se guardan en almacenamiento privado y se eliminan automáticamente tras un periodo limitado o cuando lo pidas.",
-          "El texto extraído, los currículums, versiones, ofertas y análisis se conservan hasta que los elimines o elimines tu cuenta.",
-          "La eliminación borra tus datos del servicio de inmediato. Pueden quedar copias en respaldos cifrados de la infraestructura hasta que caduquen, como máximo {backupDays} días después de la eliminación; no se usan para restaurar tus datos.",
-          "Los registros de pago pueden conservarse durante el plazo que exija la ley (art. 16, I, de la LGPD).",
+          "Supabase: base de datos, autenticación y almacenamiento, en São Paulo, Brasil (región sa-east-1).",
+          "Vercel: alojamiento de la aplicación y registros técnicos de acceso, con las funciones de la aplicación ejecutadas en São Paulo, Brasil.",
+          "Stripe: procesamiento de pagos. Recibe tu correo, identificador interno de la cuenta, plan y registro de aceptación de los términos, además de los datos que introduzcas en la página de pago.",
+          "Proveedor de correo usado por el servicio de autenticación: recibe tu dirección para enviar la confirmación de registro y la recuperación de contraseña.",
+          { when: "noAi", text: "Proveedores de IA: actualmente tu currículum no se envía a ninguno. El análisis y las sugerencias los genera un motor de reglas en los servidores del servicio." },
+          { when: "ai", text: "Anthropic (Estados Unidos): proveedor de IA. Recibe el texto del currículum y de la oferta para estructurar documentos y redactar sugerencias, cartas y preparación para entrevistas." },
+          { when: "turnstile", text: "Cloudflare: verificación antibots (Turnstile) en los formularios de acceso." },
+          { when: "ocr", text: "Servicio de OCR: recibe PDF escaneados para reconocer el texto." },
+          { when: "metrics", text: "Panel interno de gestión NexForge: recibe solo los eventos seudonimizados descritos en la sección 2." },
+          "Autoridades públicas, cuando exista obligación legal u orden judicial.",
+          "No vendemos tus datos, no los usamos para publicidad y no enviamos tu currículum ni tus resultados a empleadores o reclutadores: tú decides a quién enviarlos.",
         ],
       },
       {
-        title: "5. Operadores y transferencias internacionales",
+        title: "5. Transferencia internacional",
         paragraphs: [
-          "Supabase (base de datos, autenticación y almacenamiento de archivos), alojado en São Paulo, Brasil (región sa-east-1).",
-          "Vercel (alojamiento de la aplicación y registros técnicos de solicitudes), con las funciones de la aplicación ejecutadas en São Paulo, Brasil.",
-          "Anthropic (procesamiento con IA del texto del currículum y de la oferta para estructurar documentos y redactar sugerencias), en Estados Unidos — solo cuando se usan las funciones de IA. Anthropic no usa estos datos para entrenar sus modelos.",
-          "Stripe (procesamiento de pagos), Cloudflare Turnstile (verificación anti-bots) y nuestro proveedor de correo transaccional (SMTP), para los correos de la cuenta y del servicio.",
-          "Estos proveedores actúan como operadores, siguiendo nuestras instrucciones, mediante contratos que incluyen obligaciones de protección de datos.",
-          "Algunos de estos proveedores tratan datos fuera de Brasil, principalmente en Estados Unidos (en especial Anthropic y, en parte del tratamiento, Stripe, Cloudflare, Vercel y el proveedor de correo). Estas transferencias internacionales siguen el art. 33 de la LGPD y se basan en las cláusulas contractuales estándar aprobadas por la ANPD (Resolución CD/ANPD n.º 19/2024) y en las garantías que ofrece cada proveedor.",
-          "No vendemos tus datos personales ni los usamos para publicidad.",
+          "La base de datos y las funciones de la aplicación están en Brasil, pero algunos proveedores son empresas extranjeras, principalmente de Estados Unidos, y pueden tratar datos fuera de Brasil. Estas transferencias ocurren cuando son necesarias para ejecutar el contrato contigo (art. 33, IX, de la LGPD).",
+          { when: "ai", text: "El texto del currículum y de la oferta se envía a Estados Unidos siempre que se ejecuta una función de IA." },
         ],
       },
       {
-        title: "6. Tus derechos (art. 18 de la LGPD)",
+        title: "6. Conservación y eliminación",
         paragraphs: [
-          "Tienes derecho a: confirmación de la existencia del tratamiento; acceso a los datos; corrección de datos incompletos, inexactos o desactualizados; anonimización, bloqueo o eliminación de datos innecesarios, excesivos o tratados en disconformidad con la ley; portabilidad; eliminación de los datos tratados con tu consentimiento; información sobre las entidades con las que compartimos datos; información sobre la posibilidad de no consentir y sus consecuencias; revocación del consentimiento; y oposición al tratamiento realizado en disconformidad con la ley.",
-          "La mayoría se puede ejercer en la propia aplicación: edita tu perfil y currículums, elimina documentos y análisis y elimina tu cuenta. Para lo demás, escribe a {email}.",
-          "También puedes presentar una petición ante la Autoridad Nacional de Protección de Datos de Brasil (ANPD) o ante los organismos de defensa del consumidor.",
+          { when: "noStoredFiles", text: "Archivo original: no se guarda. Se lee en memoria para extraer el texto y después se descarta; el texto extraído queda guardado en tu cuenta." },
+          { when: "storedFiles", text: "Archivo original: se conserva en almacenamiento privado. Puedes eliminarlo en Documentos, y una rutina diaria borra los originales con más de {retentionDays} días. El texto extraído sigue guardado en tu cuenta." },
+          "Texto extraído, currículums, versiones, ofertas, análisis y demás contenidos: se conservan hasta que los elimines o elimines la cuenta. No hay eliminación automática por inactividad.",
+          "Eliminación de la cuenta: al confirmarla, retiramos del servicio tu cuenta y los datos vinculados a ella, cancelamos la suscripción activa y eliminamos tu registro de cliente en Stripe. Los cobros ya realizados siguen registrados en Stripe como registros fiscales.",
+          "Pueden quedar copias en respaldos de la infraestructura hasta el fin de su ciclo de conservación, y los registros técnicos siguen el ciclo de cada proveedor.",
+          { when: "metrics", text: "Los eventos seudonimizados ya enviados al panel interno no se eliminan con la cuenta." },
+          "Los datos necesarios para cumplir una obligación legal o defender derechos pueden conservarse durante el plazo aplicable (art. 16 de la LGPD).",
         ],
       },
       {
-        title: "7. Seguridad",
+        title: "7. Tus derechos (art. 18 de la LGPD)",
         paragraphs: [
-          "Los datos se aíslan por usuario con políticas de acceso en la base de datos, se transmiten por conexiones cifradas y los archivos subidos se validan y nunca se ejecutan. Los registros de la aplicación no contienen el contenido de los currículums.",
-          "Si ocurre un incidente de seguridad que pueda causar un riesgo o daño relevante a los titulares, lo comunicaremos a la ANPD y a los titulares afectados, conforme al art. 48 de la LGPD.",
+          "Tienes derecho a: confirmación de la existencia de tratamiento; acceso a los datos; corrección de datos incompletos, inexactos o desactualizados; anonimización, bloqueo o eliminación de datos innecesarios, excesivos o tratados en disconformidad con la ley; portabilidad; eliminación de los datos tratados con tu consentimiento; información sobre las entidades con las que compartimos datos; información sobre la posibilidad de no consentir y sus consecuencias; revocación del consentimiento; y oposición al tratamiento en disconformidad con la ley.",
+          "En el propio servicio puedes editar tu perfil y currículums; eliminar documentos, versiones, ofertas y análisis; descargar una copia de tus datos en formato JSON en la página Cuenta; y eliminar la cuenta. Para lo demás, escribe a {email}. Responderemos dentro de los plazos legales y podremos pedirte que confirmes que eres el titular.",
+          "También puedes presentar una petición ante la Autoridad Nacional de Protección de Datos (ANPD) o ante los organismos de defensa del consumidor.",
         ],
       },
       {
-        title: "8. Cookies",
-        paragraphs: ["Solo usamos cookies necesarias para la autenticación y para recordar el idioma de la interfaz."],
+        title: "8. Decisiones automatizadas (art. 20 de la LGPD)",
+        paragraphs: [
+          "El índice de compatibilidad, la clasificación de los requisitos y las sugerencias se generan automáticamente. Criterios del índice: los requisitos obligatorios pesan 3 y los deseables, 1; cada requisito vale 1 si hay evidencia, 0,5 si es parcial y 0 si no se identifica; los requisitos ambiguos quedan fuera.",
+          "El resultado es una estimación hecha a partir del texto del currículum. No es la probabilidad de ser contratado, no garantiza ningún resultado en procesos de selección, no se envía a empleadores y no decide ninguna contratación.",
+          "Puedes corregir tu currículum, aceptar, editar o rechazar cada sugerencia, y pedir información sobre los criterios o la revisión de un resultado automatizado en {email}.",
+        ],
+      },
+      {
+        title: "9. Cookies",
+        paragraphs: [
+          "Usamos solo cookies necesarias: las de sesión del servicio de autenticación (prefijo sb-), para mantener tu sesión, y cvm_locale, que guarda el idioma de la interfaz durante un máximo de 1 año. No usamos cookies publicitarias ni herramientas de analítica de terceros en el navegador.",
+          { when: "turnstile", text: "Cloudflare Turnstile puede usar recursos propios del navegador en los formularios de acceso." },
+          "La página de pago pertenece a Stripe, que aplica su propia política de cookies.",
+        ],
+      },
+      {
+        title: "10. Niños y adolescentes",
+        paragraphs: [
+          "CV Match está destinado a mayores de 18 años. Las personas menores de 18 años solo deben usarlo con la participación de su representante legal, y los niños no deben usarlo. No verificamos la edad en el registro. Si eres responsable de un niño o adolescente y has identificado una cuenta, escribe a {email} para pedir la eliminación de los datos.",
+        ],
+      },
+      {
+        title: "11. Seguridad e incidentes",
+        paragraphs: [
+          "Adoptamos medidas técnicas para proteger tus datos: aislamiento por usuario con políticas de acceso en la base de datos, conexiones cifradas, validación de los archivos enviados, que solo se leen y nunca se ejecutan, y registros de la aplicación sin el contenido del currículum. Ningún sistema es totalmente seguro, por lo que no podemos prometer seguridad absoluta.",
+          "Si ocurre un incidente de seguridad que pueda acarrear riesgo o daño relevante a los titulares, lo comunicaremos a la ANPD y a los titulares afectados, conforme al art. 48 de la LGPD.",
+        ],
+      },
+      {
+        title: "12. Cambios en esta política",
+        paragraphs: [
+          "Podemos actualizar esta política para reflejar cambios en el servicio o en la ley. La fecha de la última actualización aparece al inicio de la página. Los cambios relevantes se informarán en el sitio o por correo electrónico.",
+        ],
       },
     ],
   },
   terms: {
     title: "Términos de uso",
-    intro: "Estos términos rigen el uso de CV Match. Al crear una cuenta o usar el servicio, los aceptas junto con la política de privacidad.",
+    intro: "Estos términos regulan el uso de CV Match. Al crear una cuenta o usar el servicio, los aceptas junto con la política de privacidad.",
     sections: [
       {
         title: "1. El servicio",
         paragraphs: [
           "CV Match analiza la compatibilidad entre tu currículum y una descripción de oferta y sugiere mejoras. El índice de compatibilidad es una estimación de la herramienta, no una probabilidad de contratación.",
+          { when: "noAi", text: "Actualmente los análisis, sugerencias, cartas y preparaciones para entrevistas los genera un motor de reglas, sin IA generativa: los cambios de redacción son puntuales, los textos siguen plantillas y el contenido del currículum no se traduce. Al exportar, el idioma elegido se aplica a los títulos de las secciones." },
         ],
       },
       {
-        title: "2. Sin garantías",
+        title: "2. Sin garantía de resultados",
         paragraphs: [
-          "No garantizamos entrevistas, ofertas de empleo, decisiones de contratación ni puntuaciones en sistemas de seguimiento de candidatos (ATS). Las decisiones de selección corresponden a cada empleador.",
+          "CV Match es una herramienta de apoyo. Ningún resultado, índice o sugerencia es garantía de empleo, entrevista, oferta, éxito en un proceso de selección o puntuación en sistemas de reclutamiento (ATS). Las decisiones de selección corresponden a cada empleador.",
         ],
       },
       {
         title: "3. Tu responsabilidad",
         paragraphs: [
-          "Eres responsable de la veracidad de tu currículum y de todo lo que envíes a empleadores. Las sugerencias — incluidas las generadas por IA — deben ser revisadas por ti antes de usarlas. No agregues competencias, experiencia ni resultados que no tengas.",
+          "Eres responsable de la veracidad de tu currículum y de todo lo que envíes a empleadores. Las sugerencias generadas automáticamente deben ser revisadas por ti antes de usarlas. No incluyas competencias, experiencia o resultados que no tengas.",
+          "Para contratar planes de pago debes tener 18 años o más o estar asistido por tu representante legal.",
         ],
       },
       {
         title: "4. Planes, precios y pagos",
         paragraphs: [
-          "Los precios se muestran en reales brasileños (R$) y son precios finales. Los pagos los procesa Stripe, con tarjeta y, cuando se ofrecen en el checkout, con Pix o boleto.",
-          "Los paquetes de análisis son compras únicas de créditos que se consumen al ejecutar un análisis. El crédito se devuelve automáticamente si un análisis falla por motivos técnicos.",
-          "La suscripción Pro se renueva al final de cada periodo (mensual o cada 3 meses) hasta que la canceles. Puedes cancelarla en cualquier momento en el portal del cliente, accesible desde la página de facturación; no se realizan nuevos cobros y el acceso continúa hasta el final del periodo pagado.",
-          "Los precios, límites y beneficios de los planes pueden cambiar; los cambios no afectan a periodos o créditos ya pagados.",
+          "Los precios se muestran en reales (R$) y son precios finales. Los pagos los procesa Stripe, con tarjeta y, cuando se ofrecen en el checkout, con Pix o boleto.",
+          "Planes en esta versión de los términos: Gratis, sin coste, con 1 análisis y hasta 5 sugerencias; Paquete de 10 análisis, R$ 19,90 en pago único; Pro mensual, R$ 29,90 al mes, con 50 análisis al mes; Pro trimestral, R$ 69,90 cada 3 meses, con 150 análisis cada 3 meses. Los planes de pago incluyen todas las sugerencias, carta de presentación y preparación para entrevistas. El importe cobrado es el que se muestra en el checkout antes del pago.",
+          "Los paquetes de análisis son compras únicas de créditos que se consumen al ejecutar un análisis y no caducan. El crédito se devuelve automáticamente si un análisis falla por motivos técnicos.",
+          "La suscripción Pro se renueva al final de cada periodo (mensual o cada 3 meses) hasta que se cancele. Los análisis no usados en un periodo no pasan al siguiente. Puedes cancelar en cualquier momento en el portal del cliente, accesible desde la página de cobro; no hay nuevos cobros y el acceso continúa hasta el final del periodo pagado.",
+          "Los precios, límites y beneficios de los planes pueden cambiar; los cambios no afectan a periodos o créditos ya pagados. Un cambio de precio en una suscripción activa exige aviso previo, y podrás cancelar antes de que entre en vigor.",
         ],
       },
       {
@@ -965,12 +1135,13 @@ const es: MarketingDict = {
           "Si no se ha usado ningún análisis pagado (crédito) de esa compra, el reembolso es total. Si se ha usado una parte, el reembolso es proporcional a los análisis no utilizados.",
           "En las suscripciones, la misma regla se aplica al primer cobro: dentro de los 7 días siguientes puedes desistir y recibir el reembolso total, o proporcional si ya usaste análisis de la suscripción.",
           "Para desistir, envía tu solicitud a {email}, identificando tu cuenta. El reembolso se hace al mismo medio de pago usado en la compra, a través de Stripe, y los créditos reembolsados se retiran de tu cuenta.",
+          "Si la ley te garantiza un reembolso mayor, prevalece la ley.",
         ],
       },
       {
         title: "6. Uso aceptable",
         paragraphs: [
-          "No subas contenido que no tengas derecho a usar, archivos maliciosos ni currículums de otras personas sin su consentimiento. No intentes eludir límites, acceder a datos de otros usuarios ni interferir con el servicio.",
+          "No subas contenido que no tengas derecho a usar, archivos maliciosos ni currículums de otras personas sin su autorización. No intentes eludir límites, acceder a datos de otros usuarios ni interferir con el servicio.",
         ],
       },
       {
@@ -982,12 +1153,13 @@ const es: MarketingDict = {
       {
         title: "8. Baja y responsabilidad",
         paragraphs: [
-          "Puedes eliminar tu cuenta en cualquier momento. Podemos suspender cuentas que incumplan estos términos.",
+          "Puedes eliminar tu cuenta en cualquier momento en la página Cuenta. La eliminación cancela la suscripción activa y borra los créditos no usados: si aún estás dentro del plazo de arrepentimiento, pide el reembolso antes de eliminar la cuenta.",
+          "Podemos suspender cuentas por incumplimiento grave de estos términos, indicando el motivo por el correo de la cuenta. La suspensión no afecta a tus derechos de consumidor sobre los importes pagados.",
           "Nuestra responsabilidad se rige por la legislación brasileña. Nada de estos términos excluye ni limita los derechos que el Código de Defensa del Consumidor te garantiza como consumidor.",
         ],
       },
       {
-        title: "9. Ley aplicable y jurisdicción",
+        title: "9. Ley aplicable, jurisdicción y atención",
         paragraphs: [
           "Estos términos se rigen por las leyes de la República Federativa de Brasil, incluidos el Código de Defensa del Consumidor (Ley n.º 8.078/1990) y el Marco Civil de Internet (Ley n.º 12.965/2014).",
           "Cualquier controversia puede presentarse ante los tribunales del domicilio del consumidor (art. 101, I, del CDC). Antes, puedes escribirnos a {email} para intentar resolverla.",
@@ -998,5 +1170,3 @@ const es: MarketingDict = {
 };
 
 export const marketing: Record<"en" | "pt" | "es", MarketingDict> = { en, pt, es };
-
-export const LEGAL_LAST_UPDATED = "2026-11-02";

@@ -2,10 +2,9 @@ import Link from "next/link";
 import { Logo } from "@/components/ui";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import type { MarketingDict } from "@/lib/i18n/marketing";
-import { legalOperator } from "@/lib/legal";
+import { LEGAL_CONTACT_EMAIL } from "@/lib/legal";
 
 export function MarketingFooter({ t }: { t: MarketingDict }) {
-  const { email } = legalOperator();
   const linkCls = "text-ink-soft transition-colors hover:text-ink";
   return (
     <footer className="border-t border-line bg-white">
@@ -32,7 +31,7 @@ export function MarketingFooter({ t }: { t: MarketingDict }) {
             <li><Link href="/privacy" className={linkCls}>{t.footer.privacy}</Link></li>
             <li><Link href="/terms" className={linkCls}>{t.footer.terms}</Link></li>
             <li><Link href="/legal" className={linkCls}>{t.footer.legal}</Link></li>
-            {email.includes("@") && <li><a href={`mailto:${email}`} className={linkCls}>{t.footer.contact}</a></li>}
+            <li><a href={`mailto:${LEGAL_CONTACT_EMAIL}`} className={linkCls}>{t.footer.contact}</a></li>
           </ul>
         </nav>
       </div>

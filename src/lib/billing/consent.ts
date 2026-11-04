@@ -8,7 +8,7 @@
  *
  * Bump the version whenever the consent wording in the dictionaries or the refund policy changes.
  */
-export const TERMS_VERSION = "2026-11-02-br";
+export const TERMS_VERSION = "2026-11-04-br";
 export const REFUND_WINDOW_DAYS = 7;
 
 export function termsAcceptanceMetadata(now: Date = new Date()) {

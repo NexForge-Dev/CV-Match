@@ -70,7 +70,7 @@ export function requireEnv<K extends keyof ServerEnv>(key: K): NonNullable<Serve
 }
 
 /** Effective AI provider: explicit AI_PROVIDER, otherwise Claude when a key is configured. */
-export function aiProvider(e: ServerEnv = env()): "heuristic" | "anthropic" {
+export function aiProvider(e: Pick<ServerEnv, "AI_PROVIDER" | "ANTHROPIC_API_KEY"> = env()): "heuristic" | "anthropic" {
   if (e.AI_PROVIDER) return e.AI_PROVIDER === "anthropic" && !e.ANTHROPIC_API_KEY ? "heuristic" : e.AI_PROVIDER;
   return e.ANTHROPIC_API_KEY ? "anthropic" : "heuristic";
 }

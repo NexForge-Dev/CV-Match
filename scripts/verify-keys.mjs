@@ -45,7 +45,7 @@ else ok("public https URL");
 if (!E.CRON_SECRET || E.CRON_SECRET.length < 16) fail("CRON_SECRET missing or too short (use: openssl rand -hex 32)");
 else ok("CRON_SECRET set");
 // Shown on /legal and /privacy (LGPD art. 9; Decreto 7.962/2013 art. 2: name, CPF/CNPJ, physical and e-mail address).
-const legalMissing = ["LEGAL_OPERATOR_NAME", "LEGAL_OPERATOR_TAX_ID", "LEGAL_OPERATOR_ADDRESS", "LEGAL_CONTACT_EMAIL"].filter((k) => !E[k]?.trim());
+const legalMissing = ["LEGAL_OPERATOR_NAME", "LEGAL_OPERATOR_TAX_ID", "LEGAL_OPERATOR_ADDRESS"].filter((k) => !E[k]?.trim());
 if (legalMissing.length && !isLocal) fail(`legal pages incomplete — set ${legalMissing.join(", ")}`);
 else if (legalMissing.length) warn(`legal operator details not set (${legalMissing.join(", ")}) — required in production`);
 else ok("legal operator details set");

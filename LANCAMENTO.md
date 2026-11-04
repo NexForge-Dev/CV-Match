@@ -13,7 +13,7 @@ Guia curto para colocar o CV Match no ar e começar a vender **no Brasil** (pre�
 | Vercel | Projeto importado do GitHub + domínio próprio | `NEXT_PUBLIC_APP_URL=https://SEU_DOMINIO` | Sim |
 | Cloudflare Turnstile | Widget (modo *Managed*) com o domínio de produção; gera **site key** (pública) e **secret key** | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (Vercel) + secret key **no painel do Supabase** (Authentication → Attack protection) | Recomendado (cada conta nova ganha 1 análise grátis). Ordem obrigatória: ver §2 |
 | — | Segredo aleatório (`openssl rand -hex 32`) | `CRON_SECRET` | Sim |
-| — | Dados do responsável legal | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID` (CPF; CNPJ se abrir MEI/empresa), `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_BACKUP_RETENTION_DAYS` | Sim (aparecem em `/legal` e `/privacy`; exigidos pelo Decreto 7.962/2013 e pela LGPD) |
+| — | Dados do responsável legal | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID` (CPF; CNPJ se abrir MEI/empresa), `LEGAL_OPERATOR_ADDRESS` (o e-mail de contato é fixo em `src/lib/legal.ts`) | Sim (aparecem em `/legal` e `/privacy`; exigidos pelo Decreto 7.962/2013 e pela LGPD. Em branco, as páginas dizem que a identificação está pendente) |
 
 Todas as variáveis estão comentadas em `.env.example`. Onde colar: **Vercel → Settings → Environment Variables**
 (Production = chaves live, Preview = chaves de teste). Nunca coloque chaves no repositório.
@@ -74,7 +74,7 @@ ENV_FILE=.env.production.local npm run verify:keys   # precisa terminar sem "blo
 ## 6. Smoke test manual após o deploy (10 min)
 
 - [ ] `https://SEU_DOMINIO/api/health` → `{"ok":true,"database":true,"config":true}` (`config:false` = variável de servidor inválida/vazia)
-- [ ] Landing, `/privacy`, `/terms`, `/legal` abrem e mostram seus dados legais (sem "—").
+- [ ] Landing, `/privacy`, `/terms`, `/legal` abrem e mostram seus dados legais (sem o aviso de identificação pendente).
 - [ ] Criar conta com e-mail real → e-mail de confirmação chega → login funciona.
 - [ ] "Esqueci a senha" → e-mail chega → nova senha funciona.
 - [ ] Enviar um CV PDF e um DOCX → revisar → colar uma vaga → análise grátis.

@@ -48,8 +48,7 @@ Follow [PAYMENTS.md](./PAYMENTS.md). Start in test mode; switch keys to live onl
    | `CRON_SECRET` | random string (`openssl rand -hex 32`) |
    | `STORE_ORIGINAL_FILES` | `false` (recommended) |
    | `STRIPE_AUTOMATIC_TAX` | `false` — Stripe Tax does not support Brazil (see PAYMENTS.md) |
-   | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS`, `LEGAL_CONTACT_EMAIL` | the provider's legal name, NIF, postal address and contact email (shown on `/legal` and `/privacy`) |
-   | `LEGAL_BACKUP_RETENTION_DAYS` | days deleted data may remain in backups (Supabase Pro: `7`) |
+   | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS` | the provider's legal name, CPF or CNPJ and physical address (shown on `/legal` and `/privacy`). While blank, the pages say the identification is pending. The contact e-mail is fixed in `src/lib/legal.ts` |
 
 3. Deploy. `vercel.json` schedules `/api/cron/cleanup` daily; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically.
    The cron also gives back credits of analyses whose function was killed before finishing (older than 15 minutes).
