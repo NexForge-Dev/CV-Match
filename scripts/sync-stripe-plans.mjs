@@ -35,7 +35,7 @@ for (const key of ["STRIPE_SECRET_KEY", "NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SE
 
 const stripe = new Stripe(E.STRIPE_SECRET_KEY);
 const db = createClient(E.NEXT_PUBLIC_SUPABASE_URL, E.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-console.log(`Stripe ${E.STRIPE_SECRET_KEY.startsWith("sk_live_") ? "LIVE" : "test"} mode → ${E.NEXT_PUBLIC_SUPABASE_URL}\n`);
+console.log(`Stripe ${E.STRIPE_SECRET_KEY.includes("_live_") ? "LIVE" : "test"} mode → ${E.NEXT_PUBLIC_SUPABASE_URL}\n`);
 try {
   await stripe.products.list({ limit: 1 });
 } catch (err) {
