@@ -56,7 +56,7 @@ const en = {
       {
         tag: "Clarity and job terminology",
         before: "Responsible for the development of a reactjs dashboard used by internal teams, etc.",
-        after: "Developed a React dashboard used by internal teams",
+        after: "Development of a React dashboard used by internal teams",
       },
       {
         tag: "Skills already proven in your experience",
@@ -89,9 +89,9 @@ const en = {
       { label: "3+ years with React", must: true, status: "partial" },
     ],
     suggestion: {
-      rationale: "Brings to the top of your summary terms the job asks for and that are already in your CV.",
+      rationale: "Summary rebuilt only from facts already in your CV, leading with what this job asks for.",
       current: "Developer focused on web applications and APIs.",
-      suggested: "Full stack developer with experience in React, Node.js and PostgreSQL, focused on web applications and APIs.",
+      suggested: "Full Stack Developer, working with React, Node.js, PostgreSQL. Languages: English (C1).",
     },
   },
   how: {
@@ -100,8 +100,8 @@ const en = {
       { title: "Import your CV", text: "Upload a PDF or DOCX (or paste text). Review and correct what was extracted before continuing." },
       { title: "Add the job", text: "Paste the job description. Company, location, language and link are optional. No scraping needed." },
       { title: "Compatibility analysis", text: "Each requirement is classified as found, partial, not identified or ambiguous, with the evidence quoted from your CV." },
-      { title: "Targeted improvements", text: "Summary, skills, bullet rewrites, project order and items to confirm — accept, edit or reject each one." },
-      { title: "Review and export", text: "Compare versions, keep your original intact and export a professional PDF or DOCX in PT, ES or EN." },
+      { title: "Targeted improvements", text: "Summary, skills, clarity adjustments to your bullets, project order and items to confirm — accept, edit or reject each one." },
+      { title: "Review and export", text: "Compare versions, keep your original intact and export a PDF or DOCX with section headings in PT, ES or EN. Your content stays in the language it was written in." },
     ],
   },
   pricing: {
@@ -115,7 +115,7 @@ const en = {
     analysesPerQuarter: (n: number) => `${n} analyses per 3 months`,
     suggestionsLimited: (n: number) => `Up to ${n} improvement suggestions`,
     suggestionsFull: "All improvement suggestions",
-    coverLetter: "Personalized cover letter",
+    coverLetter: "Cover letter built from your CV and the job",
     interview: "Interview preparation",
     export: "PDF and DOCX export",
     cta: { free: "Start free", pack: "Buy pack", subscription: "Go Pro" },
@@ -131,7 +131,7 @@ const en = {
       },
       {
         q: "Will CV Match invent experience to make my CV fit?",
-        a: "No. Suggestions only reorganize and reword what is already in your CV. Any suggestion that introduces numbers, technologies or employers not present in your CV is discarded automatically. Requirements you don't show become “confirm before adding” items that you decide on.",
+        a: "No. Suggestions only reorganize what is already in your CV and make small wording adjustments. Any suggestion that introduces numbers, technologies or employers not present in your CV is discarded automatically. Requirements you don't show become “confirm before adding” items that you decide on.",
       },
       {
         q: "Does it guarantee a better ATS score or an interview?",
@@ -143,7 +143,7 @@ const en = {
       },
       {
         q: "Which languages are supported?",
-        a: "The interface is available in Portuguese, Spanish and English, and you can generate and export your CV in any of these three languages.",
+        a: "The interface is available in Portuguese, Spanish and English. You can export your CV with section headings in any of these languages, but its content is not translated: it stays in the language it was written in.",
       },
       {
         q: "How do payments work?",
@@ -476,9 +476,9 @@ const pt: MarketingDict = {
       { label: "3+ anos com React", must: true, status: "partial" },
     ],
     suggestion: {
-      rationale: "Traz para o início do resumo termos que a vaga pede e que já estão no seu currículo.",
+      rationale: "Resumo reescrito apenas com fatos que já estão no seu currículo, destacando o que a vaga pede.",
       current: "Desenvolvedora focada em aplicações web e APIs.",
-      suggested: "Desenvolvedora full stack com experiência em React, Node.js e PostgreSQL, focada em aplicações web e APIs.",
+      suggested: "Desenvolvedora Full Stack, atuando com React, Node.js, PostgreSQL. Idiomas: Inglês (C1).",
     },
   },
   how: {
@@ -487,8 +487,8 @@ const pt: MarketingDict = {
       { title: "Importe o currículo", text: "Envie PDF ou DOCX (ou cole o texto). Revise e corrija o que foi extraído antes de seguir." },
       { title: "Informe a vaga", text: "Cole a descrição da vaga. Empresa, local, idioma e link são opcionais. Nada de scraping." },
       { title: "Análise de compatibilidade", text: "Cada requisito é classificado como encontrado, parcial, não identificado ou ambíguo, com a evidência citada do seu currículo." },
-      { title: "Melhorias direcionadas", text: "Resumo, competências, reescrita de experiências, ordem dos projetos e itens a confirmar — aceite, edite ou rejeite cada um." },
-      { title: "Revise e exporte", text: "Compare versões, mantenha o original intacto e exporte PDF ou DOCX profissional em PT, ES ou EN." },
+      { title: "Melhorias direcionadas", text: "Resumo, competências, ajustes de clareza nas experiências, ordem dos projetos e itens a confirmar — aceite, edite ou rejeite cada um." },
+      { title: "Revise e exporte", text: "Compare versões, mantenha o original intacto e exporte PDF ou DOCX com os títulos das seções em PT, ES ou EN. O conteúdo permanece no idioma em que foi escrito." },
     ],
   },
   pricing: {
@@ -502,7 +502,7 @@ const pt: MarketingDict = {
     analysesPerQuarter: (n: number) => `${n} análises a cada 3 meses`,
     suggestionsLimited: (n: number) => `Até ${n} sugestões de melhoria`,
     suggestionsFull: "Todas as sugestões de melhoria",
-    coverLetter: "Carta de apresentação personalizada",
+    coverLetter: "Carta de apresentação montada com seu currículo e a vaga",
     interview: "Preparação para entrevista",
     export: "Exportação em PDF e DOCX",
     cta: { free: "Começar grátis", pack: "Comprar pacote", subscription: "Assinar Pro" },
@@ -518,7 +518,7 @@ const pt: MarketingDict = {
       },
       {
         q: "O CV Match inventa experiência para encaixar o currículo?",
-        a: "Não. As sugestões apenas reorganizam e reescrevem o que já está no seu currículo. Qualquer sugestão que introduza números, tecnologias ou empresas ausentes do currículo é descartada automaticamente. Requisitos que você não comprova viram itens “confirme antes de incluir”, e a decisão é sua.",
+        a: "Não. As sugestões apenas reorganizam o que já está no seu currículo e fazem pequenos ajustes de redação. Qualquer sugestão que introduza números, tecnologias ou empresas ausentes do currículo é descartada automaticamente. Requisitos que você não comprova viram itens “confirme antes de incluir”, e a decisão é sua.",
       },
       {
         q: "Garante pontuação melhor em ATS ou entrevista?",
@@ -530,7 +530,7 @@ const pt: MarketingDict = {
       },
       {
         q: "Quais idiomas são suportados?",
-        a: "A interface está em português, espanhol e inglês, e você pode gerar e exportar o currículo em qualquer um desses três idiomas.",
+        a: "A interface está em português, espanhol e inglês. Você pode exportar o currículo com os títulos das seções em qualquer um desses idiomas, mas o conteúdo não é traduzido: ele permanece no idioma em que foi escrito.",
       },
       {
         q: "Como funcionam os pagamentos?",
@@ -861,9 +861,9 @@ const es: MarketingDict = {
       { label: "3+ años con React", must: true, status: "partial" },
     ],
     suggestion: {
-      rationale: "Lleva al inicio del resumen términos que la oferta pide y que ya están en tu currículum.",
+      rationale: "Resumen reescrito solo con datos que ya están en tu currículum, destacando lo que pide la oferta.",
       current: "Desarrolladora enfocada en aplicaciones web y APIs.",
-      suggested: "Desarrolladora full stack con experiencia en React, Node.js y PostgreSQL, enfocada en aplicaciones web y APIs.",
+      suggested: "Desarrolladora Full Stack, trabajando con React, Node.js, PostgreSQL. Idiomas: Inglés (C1).",
     },
   },
   how: {
@@ -872,8 +872,8 @@ const es: MarketingDict = {
       { title: "Importa tu currículum", text: "Sube un PDF o DOCX (o pega el texto). Revisa y corrige lo extraído antes de continuar." },
       { title: "Añade la oferta", text: "Pega la descripción de la oferta. Empresa, ubicación, idioma y enlace son opcionales. Sin scraping." },
       { title: "Análisis de compatibilidad", text: "Cada requisito se clasifica como encontrado, parcial, no identificado o ambiguo, citando la evidencia de tu currículum." },
-      { title: "Mejoras específicas", text: "Resumen, competencias, reescritura de experiencias, orden de proyectos y puntos a confirmar — acepta, edita o rechaza cada uno." },
-      { title: "Revisa y exporta", text: "Compara versiones, conserva el original intacto y exporta un PDF o DOCX profesional en PT, ES o EN." },
+      { title: "Mejoras específicas", text: "Resumen, competencias, ajustes de claridad en las experiencias, orden de proyectos y puntos a confirmar — acepta, edita o rechaza cada uno." },
+      { title: "Revisa y exporta", text: "Compara versiones, conserva el original intacto y exporta un PDF o DOCX con los títulos de las secciones en PT, ES o EN. El contenido se mantiene en el idioma en que fue escrito." },
     ],
   },
   pricing: {
@@ -887,7 +887,7 @@ const es: MarketingDict = {
     analysesPerQuarter: (n: number) => `${n} análisis cada 3 meses`,
     suggestionsLimited: (n: number) => `Hasta ${n} sugerencias de mejora`,
     suggestionsFull: "Todas las sugerencias de mejora",
-    coverLetter: "Carta de presentación personalizada",
+    coverLetter: "Carta de presentación creada con tu currículum y la oferta",
     interview: "Preparación de entrevista",
     export: "Exportación en PDF y DOCX",
     cta: { free: "Empezar gratis", pack: "Comprar paquete", subscription: "Hazte Pro" },
@@ -903,7 +903,7 @@ const es: MarketingDict = {
       },
       {
         q: "¿CV Match inventa experiencia para encajar el currículum?",
-        a: "No. Las sugerencias solo reorganizan y reescriben lo que ya está en tu currículum. Cualquier sugerencia que introduzca números, tecnologías o empresas que no aparecen se descarta automáticamente. Los requisitos que no demuestras se convierten en puntos “confirma antes de añadir”, y tú decides.",
+        a: "No. Las sugerencias solo reorganizan lo que ya está en tu currículum y hacen pequeños ajustes de redacción. Cualquier sugerencia que introduzca números, tecnologías o empresas que no aparecen se descarta automáticamente. Los requisitos que no demuestras se convierten en puntos “confirma antes de añadir”, y tú decides.",
       },
       {
         q: "¿Garantiza mejor puntuación ATS o una entrevista?",
@@ -915,7 +915,7 @@ const es: MarketingDict = {
       },
       {
         q: "¿Qué idiomas se admiten?",
-        a: "La interfaz está en portugués, español e inglés, y puedes generar y exportar tu currículum en cualquiera de estos tres idiomas.",
+        a: "La interfaz está en portugués, español e inglés. Puedes exportar tu currículum con los títulos de las secciones en cualquiera de estos idiomas, pero su contenido no se traduce: se mantiene en el idioma en que fue escrito.",
       },
       {
         q: "¿Cómo funcionan los pagos?",
