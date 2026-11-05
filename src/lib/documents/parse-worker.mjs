@@ -3,10 +3,13 @@ import os from "node:os";
 import { Worker } from "node:worker_threads";
 
 // First, so the watchdog thread inherits it. On one vCPU the server that answers everyone else must win.
-try {
-  os.setPriority(0, os.constants.priority.PRIORITY_LOW);
-} catch {
-  // Only a loss of priority, the parse can still run.
+// Linux only: there a lower priority gets a smaller share, while Windows runs it only when nothing else wants the CPU.
+if (process.platform === "linux") {
+  try {
+    os.setPriority(0, os.constants.priority.PRIORITY_BELOW_NORMAL);
+  } catch {
+    // Only a loss of priority, the parse can still run.
+  }
 }
 
 // A thread, because the parsers can hold the main thread for minutes. It covers memory outside the V8 heap
