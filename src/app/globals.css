@@ -15,6 +15,8 @@ html:has(.safe-bottom) {
 body {
   @apply bg-slate-50 text-ink;
   font-feature-settings: "cv11", "ss03";
+  /* Pasted CVs and job ads can hold very long unbroken strings. */
+  overflow-wrap: break-word;
 }
 
 @layer base {
@@ -83,6 +85,8 @@ body {
   /* Textareas grow with their content where supported (falls back to rows elsewhere). */
   textarea.input {
     field-sizing: content;
+    /* Height follows the content, width follows the layout: a long URL must not widen the page. */
+    contain: inline-size;
     min-height: 4.5rem;
     max-height: 28rem;
   }

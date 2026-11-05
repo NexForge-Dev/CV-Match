@@ -122,7 +122,7 @@ export function AppNav({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-2 lg:hidden">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between border-b border-line bg-white px-4 py-2 lg:hidden">
         <Logo />
         <button ref={toggleRef} className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open} aria-controls="mobile-menu">
           {open ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}

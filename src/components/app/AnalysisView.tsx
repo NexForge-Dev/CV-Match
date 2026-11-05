@@ -182,7 +182,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           </p>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
             <span className="tag">{formatDate(analysis.createdAt, locale)}</span>
-            <Link className="link-solo min-w-0 gap-1 break-words" href={`/resumes/${analysis.resumeId}`}>
+            <Link className="link-solo min-w-0 max-w-full gap-1 [overflow-wrap:anywhere]" href={`/resumes/${analysis.resumeId}`}>
               <FileText aria-hidden className="h-3.5 w-3.5" /> {analysis.resumeTitle} · v{analysis.versionNumber}
             </Link>
             <span>{a.provider[analysis.provider] ?? analysis.provider}</span>

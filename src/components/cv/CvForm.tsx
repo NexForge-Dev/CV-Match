@@ -78,7 +78,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
     <div className="space-y-8" key={formKey}>
       <section>
         <h3 className="eyebrow mb-3">{f.contact}</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field id="c-name" autoComplete="name" label={f.fullName} value={value.contact.fullName} onChange={(v) => setContact("fullName", v)} />
           <Field id="c-headline" label={f.headline} value={value.contact.headline} onChange={(v) => setContact("headline", v)} />
           <Field id="c-email" type="email" autoComplete="email" label={f.email} value={value.contact.email} onChange={(v) => setContact("email", v)} />
@@ -102,7 +102,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.experiences.length} onMove={(to) => set("experiences", move(value.experiences, i, to))} onRemove={() => set("experiences", value.experiences.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${e.id}-t`} label={f.jobTitle} value={e.title} onChange={(v) => update({ title: v })} />
                   <Field id={`${e.id}-c`} label={f.company} value={e.company} onChange={(v) => update({ company: v })} />
                   <Field id={`${e.id}-s`} label={f.start} value={e.start} onChange={(v) => update({ start: v })} />
@@ -135,7 +135,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.projects.length} onMove={(to) => set("projects", move(value.projects, i, to))} onRemove={() => set("projects", value.projects.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${p.id}-n`} label={f.projectName} value={p.name} onChange={(v) => update({ name: v })} />
                   <Field id={`${p.id}-l`} label={f.link} value={p.link} onChange={(v) => update({ link: v })} />
                 </div>
@@ -162,7 +162,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.education.length} onMove={(to) => set("education", move(value.education, i, to))} onRemove={() => set("education", value.education.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${ed.id}-d`} label={f.degree} value={ed.degree} onChange={(v) => update({ degree: v })} />
                   <Field id={`${ed.id}-i`} label={f.institution} value={ed.institution} onChange={(v) => update({ institution: v })} />
                   <Field id={`${ed.id}-s`} label={f.start} value={ed.start} onChange={(v) => update({ start: v })} />
@@ -180,7 +180,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ListField
           id="languages"
           label={f.languages}
