@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
 import { isCaptchaError } from "@/lib/captcha";
+import { useHydrated } from "@/lib/client/useHydrated";
 import { useCaptcha } from "./Captcha";
 
 export function LoginForm() {
@@ -20,6 +21,7 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(params.get("error") === "link" ? t.errors.generic : null);
   const [loading, setLoading] = useState(false);
   const captcha = useCaptcha();
+  const hydrated = useHydrated();
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   async function onSubmit(e: React.FormEvent) {
@@ -44,7 +46,7 @@ export function LoginForm() {
       footer={
         <>
           {t.auth.noAccount}{" "}
-          <Link className="link" href={`/signup${params.get("next") ? `?next=${encodeURIComponent(params.get("next")!)}` : ""}`}>
+          <Link className="link-solo" href={`/signup${params.get("next") ? `?next=${encodeURIComponent(params.get("next")!)}` : ""}`}>
             {t.auth.signup}
           </Link>
         </>
@@ -59,13 +61,13 @@ export function LoginForm() {
         <div>
           <div className="flex items-center justify-between">
             <label className="label" htmlFor="password">{t.auth.password}</label>
-            <Link href="/forgot-password" className="text-xs link">{t.auth.forgot}</Link>
+            <Link href="/forgot-password" className="link-solo text-xs">{t.auth.forgot}</Link>
           </div>
           <input id="password" type="password" autoComplete="current-password" required className="input" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         {captcha.widget}
         {error && <Alert tone="error">{error}</Alert>}
-        <button type="submit" className="btn-primary w-full" disabled={loading || !configured || !captcha.ready}>
+        <button type="submit" className="btn-primary w-full" disabled={!hydrated || loading || !configured || !captcha.ready}>
           {loading ? t.common.loading : t.auth.login}
         </button>
       </form>

@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
 import { authErrorMessage } from "@/lib/authErrors";
+import { useHydrated } from "@/lib/client/useHydrated";
 import { useCaptcha } from "./Captcha";
 
 export function SignupForm() {
@@ -23,6 +24,7 @@ export function SignupForm() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const captcha = useCaptcha();
+  const hydrated = useHydrated();
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   const plan = params.get("plan");
@@ -70,7 +72,7 @@ export function SignupForm() {
       footer={
         <>
           {t.auth.haveAccount}{" "}
-          <Link className="link" href="/login">
+          <Link className="link-solo" href="/login">
             {t.auth.login}
           </Link>
         </>
@@ -104,7 +106,7 @@ export function SignupForm() {
           </label>
           {captcha.widget}
           {error && <Alert tone="error">{error}</Alert>}
-          <button type="submit" className="btn-primary w-full" disabled={loading || !accepted || !configured || !captcha.ready}>
+          <button type="submit" className="btn-primary w-full" disabled={!hydrated || loading || !accepted || !configured || !captcha.ready}>
             {loading ? t.common.loading : t.auth.signup}
           </button>
         </form>
