@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
 import { authErrorMessage } from "@/lib/authErrors";
+import { signupMetadata } from "@/lib/billing/consent";
 import { useHydrated } from "@/lib/client/useHydrated";
 import { useCaptcha } from "./Captcha";
 
@@ -42,7 +43,7 @@ export function SignupForm() {
       email,
       password,
       options: {
-        data: { full_name: fullName.trim() },
+        data: signupMetadata(fullName),
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         ...captcha.options,
       },

@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui";
 import { api, errorMessage } from "@/lib/client/api";
 import { emptyCv, type CvData, type CvLanguage } from "@/lib/cv/schema";
 import { useI18n } from "@/lib/i18n/client";
+import { clearDraft, loadDraft, saveDraft, stepFromUrl } from "@/lib/client/wizardDraft";
 
 export type ExistingResume = { id: string; title: string; language: string; versionId: string; versionNumber: number };
 export type SavedJob = { id: string; title: string; company: string; language: string };
@@ -71,6 +72,51 @@ export function NewAnalysisWizard({
   // The job created by the last attempt: a retry (e.g. after buying credits) reuses it instead of saving a duplicate.
   const [createdJob, setCreatedJob] = useState<{ key: string; id: string } | null>(null);
   const [outputLanguage, setOutputLanguage] = useState<CvLanguage>(pre ? (pre.language as CvLanguage) : defaultLanguage);
+
+  // Phones often reload the tab when coming back from copying the job ad: bring the wizard back as it was.
+  const [restored, setRestored] = useState(false);
+  const preselected = pre !== undefined;
+  useEffect(() => {
+    const draft = preselected ? null : loadDraft();
+    if (draft) {
+      setPasted(draft.pasted);
+      setExtraction(draft.extraction);
+      setCv(draft.cv);
+      setCvTitle(draft.cvTitle);
+      setCvLanguage(draft.cvLanguage);
+      setFormKey(draft.formKey);
+      setVersionId(draft.versionId);
+      setChosenTitle(draft.chosenTitle);
+      setJobMode(draft.jobMode);
+      setSavedJobId(draft.savedJobId);
+      setJob(draft.job);
+      setCreatedJob(draft.createdJob);
+      setOutputLanguage(draft.outputLanguage);
+      setStep(draft.step);
+    }
+    setRestored(true);
+  }, [preselected]);
+
+  useEffect(() => {
+    if (!restored) return;
+    const timer = setTimeout(() => saveDraft({ step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage }), 300);
+    return () => clearTimeout(timer);
+  }, [restored, step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage]);
+
+  // Each step is a history entry, so the phone's back button goes to the previous step instead of leaving.
+  useEffect(() => {
+    if (!restored) return;
+    const url = new URL(window.location.href);
+    if (Number(url.searchParams.get("step") ?? 0) === step) return;
+    url.searchParams.set("step", String(step));
+    window.history.pushState(null, "", url);
+  }, [restored, step]);
+
+  useEffect(() => {
+    const onPop = () => setStep(stepFromUrl(window.location.search, { review: extraction !== null, job: versionId !== null }));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [extraction, versionId]);
 
   function handleExtraction(data: Extraction) {
     setExtraction(data);
@@ -147,6 +193,7 @@ export function NewAnalysisWizard({
       setBusy(null);
       return setError(errorMessage(t, res.error, res.detail));
     }
+    clearDraft();
     router.push(`/analyses/${res.data.analysisId}`);
   }
 

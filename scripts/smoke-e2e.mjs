@@ -57,7 +57,7 @@ function assert(cond, msg) {
 const CV = `Ana Souza
 Full Stack Developer
 ana.souza@example.com | +34 600 123 456
-Madrid, Spain
+São Paulo, Brasil
 
 Summary
 Developer focused on web applications and APIs.

@@ -45,7 +45,7 @@ mkdirSync(OUT, { recursive: true });
 const CV = `Ana Souza
 Full Stack Developer
 ana.souza@example.com | +34 600 123 456 | linkedin.com/in/anasouza
-Madrid, Spain
+São Paulo, Brasil
 
 Summary
 Developer focused on web applications and APIs.

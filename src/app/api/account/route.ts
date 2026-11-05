@@ -28,7 +28,7 @@ async function readAll(fetchPage: (from: number, to: number) => PromiseLike<{ da
 
 /** GET: export all of the user's data (data portability, LGPD art. 18 V). RLS limits every table to the user's own rows. */
 export const GET = withUser(async (_req, _ctx, { user, supabase }) => {
-  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at } };
+  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at, terms_accepted_at: user.user_metadata?.terms_accepted_at ?? null, terms_version: user.user_metadata?.terms_version ?? null } };
   for (const table of EXPORT_TABLES) {
     // The Data API returns at most 1000 rows per request: page through every table.
     out[table] = await readAll((from, to) => supabase.from(table).select("*").order(table === "subscriptions" || table === "billing_customers" ? "user_id" : "id").range(from, to));

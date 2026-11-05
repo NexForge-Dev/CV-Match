@@ -54,5 +54,5 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   if (injection.suspicious) log.warn("jobs.injection_suspected", { userId: user.id, jobId: data.id });
   analytics.feature(user.id, "vaga_adicionada");
   analytics.step(user.id, "vaga_adicionada");
-  return NextResponse.json({ jobId: data.id, requirements: data.requirements, injectionSuspected: injection.suspicious });
+  return NextResponse.json({ jobId: data.id, requirements: data.requirements });
 });

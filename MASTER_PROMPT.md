@@ -13,7 +13,7 @@ Atue como equipe completa de engenharia, produto, IA, design, segurança e monet
 
 ### 2. Público-alvo
 
-Comece por profissionais de tecnologia, recém-formados e candidatos que procuram emprego na Espanha ou vagas internacionais.
+Comece por profissionais de tecnologia, recém-formados e candidatos que procuram emprego no Brasil ou vagas internacionais.
 
 A arquitetura deve permitir expandir para outros setores e países.
 
@@ -133,8 +133,8 @@ O fluxo deve funcionar bem em dispositivos móveis, mas o editor de currículo p
 
 Configure inicialmente os seguintes preços hipotéticos:
 - Gratuito: uma análise limitada.
-- Pacote de análises: € 5–10.
-- Pro: € 9–15/mês.
+- Pacote de análises: R$ 19,90.
+- Pro: R$ 29,90/mês.
 
 Permita alterar preços, limites e benefícios sem modificar o código.
 

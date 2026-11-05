@@ -106,3 +106,40 @@ describe("injection in Portuguese and Spanish (CVM-024)", () => {
   });
 });
 
+
+describe("middleware", () => {
+  async function run(path: string, getUser: () => unknown, profile: unknown = null, cookie = "") {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:1");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "k");
+    vi.doMock("@supabase/ssr", () => ({
+      createServerClient: () => ({ auth: { getUser: async () => getUser() }, from: () => ({ select: () => ({ maybeSingle: async () => ({ data: profile }) }) }) }),
+    }));
+    const { NextRequest } = await import("next/server");
+    const { middleware } = await import("@/middleware");
+    const res = await middleware(new NextRequest(`http://localhost${path}`, { headers: cookie ? { cookie } : {} }));
+    vi.unstubAllEnvs();
+    return res;
+  }
+  const outage = () => ({ data: { user: null }, error: { name: "AuthRetryableFetchError", status: 503 } });
+  const noSession = () => ({ data: { user: null }, error: { name: "AuthSessionMissingError", status: 400 } });
+  const signedIn = () => ({ data: { user: { id: "u1", app_metadata: {} } }, error: null });
+
+  it("does not send people to /login when Auth is down (CVM-008)", async () => {
+    expect((await run("/dashboard", outage)).headers.get("location")).toBeNull();
+  });
+
+  it("still sends visitors without a session to /login", async () => {
+    expect((await run("/dashboard", noSession)).headers.get("location")).toContain("/login?next=%2Fdashboard");
+  });
+
+  it("applies the language saved in the profile on a new device (CVM-034)", async () => {
+    const res = await run("/dashboard", signedIn, { ui_locale: "es" });
+    expect(res.cookies.get("cvm_locale")?.value).toBe("es");
+  });
+
+  it("leaves a language already chosen on this device alone", async () => {
+    const res = await run("/dashboard", signedIn, { ui_locale: "es" }, "cvm_locale=en");
+    expect(res.cookies.get("cvm_locale")).toBeUndefined();
+  });
+});
