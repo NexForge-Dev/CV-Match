@@ -1,12 +1,17 @@
+import { fork, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
 import JSZip from "jszip";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { validateUpload } from "@/lib/documents/validate";
 import { extractText, scannedResult, MAX_EXTRACTED_CHARS } from "@/lib/documents/extract";
-import { parseIsolated, MAX_PDF_PAGES } from "@/lib/documents/isolate";
+import { MAX_PDF_PAGES, PARSER_PATH, parseIsolated, parserBudget, parserForkOptions } from "@/lib/documents/isolate";
 import { noOcr } from "@/lib/documents/ocr";
 import { parseCvText } from "@/lib/cv/parse";
+import { dictionaries } from "@/lib/i18n/dictionaries";
 import { extractRequirements } from "@/lib/analysis/requirements";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -29,6 +34,16 @@ async function zip(entries: Record<string, string | Uint8Array>) {
   return new Uint8Array(await z.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } }));
 }
 
+async function longPdf(pages: number) {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (let i = 0; i < pages; i++) {
+    const page = doc.addPage([595, 842]);
+    for (let line = 0; line < 50; line++) page.drawText("Artigo publicado em anais de congresso, Lattes ".repeat(2), { x: 30, y: 800 - line * 14, size: 9, font });
+  }
+  return doc.save();
+}
+
 async function blankPdf(pages: number) {
   const doc = await PDFDocument.create();
   await doc.embedFont(StandardFonts.Helvetica);
@@ -46,6 +61,8 @@ async function maxEventLoopStall(run: () => Promise<unknown>) {
     last = now;
   }, 10);
   await run();
+  // Without this a loop blocked from start to finish never ticks, and would report no stall at all.
+  await new Promise((resolve) => setTimeout(resolve, 30));
   clearInterval(timer);
   return worst;
 }
@@ -84,7 +101,7 @@ describe("hostile DOCX", () => {
     const bytes = await zip({ "word/document.xml": hostileXml(4.5) });
     expect(validateUpload(bytes, "cv.docx", DOCX_MIME, 4_000_000).ok).toBe(true);
     const stall = await maxEventLoopStall(() => extractText(bytes, "docx", noOcr));
-    expect(stall).toBeLessThan(1000);
+    expect(stall).toBeLessThan(400);
   });
 });
 
@@ -100,8 +117,13 @@ describe("hostile PDF", () => {
   });
 
   it("does not block the event loop while a parser works", async () => {
-    const bytes = await blankPdf(MAX_PDF_PAGES);
-    expect(await maxEventLoopStall(() => extractText(bytes, "pdf", noOcr))).toBeLessThan(1000);
+    const bytes = await longPdf(MAX_PDF_PAGES);
+    let result: Awaited<ReturnType<typeof extractText>> | undefined;
+    const stall = await maxEventLoopStall(async () => {
+      result = await extractText(bytes, "pdf", noOcr);
+    });
+    expect(result?.status).toBe("ok");
+    expect(stall).toBeLessThan(400);
   });
 });
 
@@ -129,10 +151,119 @@ describe("the isolated parser is killed from outside", () => {
     expect(r).toMatchObject({ ok: true, pages: 1 });
   });
 
-  it("runs a bounded number of parsers at once", async () => {
+  it("answers busy instead of queueing without end", async () => {
     const bytes = await blankPdf(1);
-    const all = await Promise.all(Array.from({ length: 6 }, () => parseIsolated("pdf", bytes)));
-    expect(all.every((r) => r.ok)).toBe(true);
+    const all = await Promise.all(Array.from({ length: 7 }, () => parseIsolated("pdf", bytes)));
+    expect(all.filter((r) => r.ok).length).toBe(5); // one running, four waiting
+    expect(all.filter((r) => !r.ok && r.reason === "busy").length).toBe(2);
+    expect((await parseIsolated("pdf", bytes)).ok).toBe(true);
+  });
+
+  it("gives up waiting well before the function timeout", async () => {
+    const running = parseIsolated("docx", await heavy);
+    const started = Date.now();
+    expect(await parseIsolated("pdf", await blankPdf(1), { queueWaitMs: 50 })).toEqual({ ok: false, reason: "busy" });
+    expect(Date.now() - started).toBeLessThan(1000);
+    await running;
+  });
+
+  it("dies with its parent, even in the middle of synchronous parsing", async () => {
+    const script = path.join(os.tmpdir(), `cvm-orphan-${process.pid}.cjs`);
+    fs.writeFileSync(script, `
+      const { fork } = require("child_process");
+      const bytes = new Uint8Array(require("fs").readFileSync(process.argv[2]));
+      const child = fork(${JSON.stringify(PARSER_PATH)}, ["512", String(process.pid)], { execArgv: ["--max-old-space-size=4096"], serialization: "advanced", stdio: ["ignore", "ignore", "ignore", "ipc"] });
+      child.send({ kind: "docx", bytes, maxPages: 1, maxChars: 10 }, () => { console.log(child.pid); setTimeout(() => process.kill(process.pid, "SIGKILL"), 200); });
+    `);
+    const input = `${script}.docx`;
+    fs.writeFileSync(input, await heavy);
+    const parent = spawn(process.execPath, [script, input], { stdio: ["ignore", "pipe", "ignore"] });
+    const pid = await new Promise<number>((resolve) => parent.stdout.once("data", (d) => resolve(Number(String(d).trim()))));
+    await new Promise((resolve) => parent.once("exit", resolve));
+    const gone = async () => {
+      for (let i = 0; i < 40; i++) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      return false;
+    };
+    expect(await gone()).toBe(true);
+    fs.rmSync(script);
+    fs.rmSync(input);
+  });
+});
+
+describe("the parser's environment (D2)", () => {
+  // os.homedir() as libuv behaves for a uid with no passwd entry, the way some sandboxes run.
+  const noPasswd = `data:text/javascript,import os from "node:os"; os.homedir = () => { if (process.env.HOME) return process.env.HOME; throw Object.assign(new Error("uv_os_homedir"), { code: "ENOENT" }); };`;
+  const run = (env: NodeJS.ProcessEnv, bytes: Uint8Array) =>
+    new Promise<Record<string, unknown>>((resolve) => {
+      const options = parserForkOptions(256);
+      const child = fork(PARSER_PATH, ["512", String(process.pid)], { ...options, env, execArgv: [...(options.execArgv ?? []), `--import=${noPasswd}`] });
+      child.once("message", (message) => {
+        child.kill("SIGKILL");
+        resolve(message as Record<string, unknown>);
+      });
+      child.send({ kind: "pdf", bytes, maxPages: 5, maxChars: 1000 });
+    });
+
+  it("reads a PDF without a passwd entry, because it gets a HOME", async () => {
+    expect(parserForkOptions(256).env).toEqual({ NODE_ENV: "production", HOME: os.tmpdir() });
+    expect(await run(parserForkOptions(256).env!, await blankPdf(1))).toMatchObject({ ok: true, pages: 1 });
+  });
+
+  it("reports a broken environment as a server fault, not as a bad file", async () => {
+    const r = await run({ NODE_ENV: "production" }, await blankPdf(1));
+    expect(r).toMatchObject({ ok: false, reason: "unavailable" });
+    expect(JSON.stringify(r)).not.toContain("uv_os_homedir");
+  });
+
+  it("still calls a file that is not a PDF corrupt, and says so in those words", async () => {
+    expect(await parseIsolated("pdf", new TextEncoder().encode("%PDF-1.7\nnot really a pdf"))).toEqual({ ok: false, reason: "corrupt" });
+  });
+});
+
+describe("memory budget", () => {
+  it.each([[1024, 1], [1769, 2], [2048, 2], [3009, 2]])("keeps server plus children inside a %i MB function", (functionMb, slots) => {
+    const budget = parserBudget(functionMb);
+    expect(budget.slots).toBe(slots);
+    expect(300 + budget.slots * budget.rssMb).toBeLessThanOrEqual(functionMb);
+  });
+});
+
+describe("what the user is told", () => {
+  it("blames the file only when the file is the problem", async () => {
+    const heavy = await zip({ "word/document.xml": hostileXml(4.5) });
+    const killed = await parseIsolated("docx", heavy, { heapMb: 24 });
+    expect(killed).toEqual({ ok: false, reason: "crashed" });
+    expect((await extractText(new TextEncoder().encode("%PDF-1.7\nbad"), "pdf", noOcr)).warnings).toEqual(["parse_error"]);
+  });
+
+  it("has every warning in every language", () => {
+    for (const locale of ["pt", "en", "es"] as const) for (const key of ["too_many_pages", "too_heavy", "temporarily_unavailable"]) expect(dictionaries[locale].wizard.warnings[key]).toBeTruthy();
+  });
+});
+
+describe("zip structure (D7)", () => {
+  it("refuses an archive whose directory does not end at the end record", async () => {
+    const good = await zip({ "word/document.xml": hostileXml(0.01) });
+    expect(validateUpload(good, "cv.docx", DOCX_MIME, 4_000_000).ok).toBe(true);
+    const eocd = good.byteLength - 22;
+    const shifted = new Uint8Array(good.byteLength + 64);
+    shifted.set(good.subarray(0, eocd));
+    shifted.set(good.subarray(eocd), eocd + 64); // a gap where a second directory could hide
+    expect(validateUpload(shifted, "cv.docx", DOCX_MIME, 4_000_000)).toEqual({ ok: false, code: "content_mismatch" });
+  });
+
+  it("accepts a compressible vector picture, but not markup dressed by name as one", async () => {
+    const emf = new Uint8Array(7_000_000);
+    emf.set(new TextEncoder().encode(" EMF"), 40);
+    expect(validateUpload(await zip({ "word/document.xml": hostileXml(0.01), "word/media/image1.emf": emf }), "cv.docx", DOCX_MIME, 4_000_000).ok).toBe(true);
+    expect(validateUpload(await zip({ "word/document.xml": hostileXml(0.01), "word/media/image1.emf": hostileXml(6) }), "cv.docx", DOCX_MIME, 4_000_000)).toEqual({ ok: false, code: "unsafe_archive" });
   });
 });
 

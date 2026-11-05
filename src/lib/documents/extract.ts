@@ -12,6 +12,8 @@ export type ExtractionWarning =
   | "very_short_text"
   | "parse_error"
   | "too_many_pages"
+  | "too_heavy"
+  | "temporarily_unavailable"
   | "not_a_word_document"
   | "truncated";
 
@@ -68,9 +70,17 @@ function finalize(text: string, method: ExtractionResult["method"], pages: numbe
   return { text: normalized, status, method, pages, warnings };
 }
 
-/** A killed parser is not something the user can fix, but it must show up in the logs. */
-function logAborted(kind: FileKind, reason: ParseFailure) {
-  if (reason === "timeout" || reason === "crashed" || reason === "spawn") log.warn("documents.parse_aborted", { kind, reason });
+/** What the user is told. Only "corrupt" blames the file: a server fault never reads as a bad upload. */
+function parseWarning(kind: FileKind, reason: ParseFailure): ExtractionWarning {
+  if (reason === "too_many_pages") return "too_many_pages";
+  if (reason === "busy" || reason === "unavailable") return "temporarily_unavailable";
+  if (reason === "timeout" || reason === "crashed") return "too_heavy";
+  return kind === "pdf" ? "parse_error" : "not_a_word_document";
+}
+
+function failedParse(kind: FileKind, reason: ParseFailure): ExtractionResult {
+  if (reason === "timeout") log.warn("documents.parse_timeout", { kind });
+  return { text: "", status: "failed", method: kind, warnings: [parseWarning(kind, reason)] };
 }
 
 /**
@@ -91,10 +101,7 @@ export function scannedResult(text: string, pages: number): ExtractionResult {
 
 async function extractPdf(bytes: Uint8Array, ocr: OcrProvider): Promise<ExtractionResult> {
   const parsed = await parseIsolated("pdf", bytes);
-  if (!parsed.ok) {
-    logAborted("pdf", parsed.reason);
-    return { text: "", status: "failed", method: "pdf", warnings: [parsed.reason === "too_many_pages" ? "too_many_pages" : "parse_error"] };
-  }
+  if (!parsed.ok) return failedParse("pdf", parsed.reason);
   const { text, pages } = parsed;
 
   const compactLength = text.replace(/\s+/g, "").replace(/--\d+of\d+--/g, "").length;
@@ -112,9 +119,7 @@ async function extractPdf(bytes: Uint8Array, ocr: OcrProvider): Promise<Extracti
 
 async function extractDocx(bytes: Uint8Array): Promise<ExtractionResult> {
   const parsed = await parseIsolated("docx", bytes);
-  if (parsed.ok) return finalize(parsed.text, "docx", undefined, []);
-  logAborted("docx", parsed.reason);
-  return { text: "", status: "failed", method: "docx", warnings: ["not_a_word_document"] };
+  return parsed.ok ? finalize(parsed.text, "docx", undefined, []) : failedParse("docx", parsed.reason);
 }
 
 export async function extractText(bytes: Uint8Array, kind: FileKind, ocr: OcrProvider = getOcrProvider()): Promise<ExtractionResult> {

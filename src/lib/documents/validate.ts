@@ -97,6 +97,7 @@ export function inspectZip(bytes: Uint8Array): ZipInfo | null {
   }
   if (eocd < 0) return null;
   const total = view.getUint16(eocd + 10, true);
+  const cdSize = view.getUint32(eocd + 12, true);
   const cdOffset = view.getUint32(eocd + 16, true);
   if (total === 0xffff || cdOffset === 0xffffffff) return { entries: total, uncompressedBytes: 0, hasWordDocument: false, zip64: true };
   if (cdOffset >= bytes.byteLength) return null;
@@ -119,7 +120,16 @@ export function inspectZip(bytes: Uint8Array): ZipInfo | null {
     if (name === "word/document.xml") hasWordDocument = true;
     pos += 46 + nameLen + extraLen + commentLen;
   }
+  // The directory must end where the end record says and touch it: otherwise another reader can find another one.
+  if (pos !== cdOffset + cdSize || pos !== eocd) return null;
   return { entries: total, uncompressedBytes: uncompressed, hasWordDocument, zip64 };
+}
+
+/** Windows metafiles are the one kind of picture that compresses well, and no XML parser gets past these headers. */
+function isVectorImage(bytes: Uint8Array) {
+  const emf = bytes[40] === 0x20 && bytes[41] === 0x45 && bytes[42] === 0x4d && bytes[43] === 0x46; // " EMF" at offset 40
+  const placeableWmf = bytes[0] === 0xd7 && bytes[1] === 0xcd && bytes[2] === 0xc6 && bytes[3] === 0x9a;
+  return emf || placeableWmf;
 }
 
 /**
@@ -151,12 +161,11 @@ export function inflatesWithin(bytes: Uint8Array, limit: number, markupLimit = l
       const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
       if (start + compressed > bytes.byteLength) return false;
       const data = bytes.subarray(start, start + compressed);
-      let size: number;
-      if (method === 0) size = compressed;
-      else if (method === 8) size = inflateRawSync(data, { maxOutputLength: remaining + 1 }).byteLength;
-      else return false;
+      const inflated = method === 0 ? data : method === 8 ? inflateRawSync(data, { maxOutputLength: remaining + 1 }) : null;
+      if (!inflated) return false;
+      const size = inflated.byteLength;
       remaining -= size;
-      if (size >= compressed * 2) markup += size;
+      if (size >= compressed * 2 && !isVectorImage(inflated)) markup += size;
       if (remaining < 0 || markup > markupLimit) return false;
       pos += 46 + view.getUint16(pos + 28, true) + view.getUint16(pos + 30, true) + view.getUint16(pos + 32, true);
     }
