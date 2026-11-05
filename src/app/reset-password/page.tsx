@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/authErrors";
-import { useHydrated } from "@/lib/client/useHydrated";
+import { fieldValue, useHydrated } from "@/lib/client/useHydrated";
 
 export default function ResetPasswordPage() {
   const { t } = useI18n();
@@ -16,7 +16,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
-  const hydrated = useHydrated();
+  const hydrated = useHydrated(() => setPassword(fieldValue("password")));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

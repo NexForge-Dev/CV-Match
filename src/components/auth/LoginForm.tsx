@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
 import { isCaptchaError } from "@/lib/captcha";
-import { useHydrated } from "@/lib/client/useHydrated";
+import { fieldValue, useHydrated } from "@/lib/client/useHydrated";
 import { useCaptcha } from "./Captcha";
 
 export function LoginForm() {
@@ -21,7 +21,10 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(params.get("error") === "link" ? t.errors.generic : null);
   const [loading, setLoading] = useState(false);
   const captcha = useCaptcha();
-  const hydrated = useHydrated();
+  const hydrated = useHydrated(() => {
+    setEmail(fieldValue("email"));
+    setPassword(fieldValue("password"));
+  });
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   async function onSubmit(e: React.FormEvent) {

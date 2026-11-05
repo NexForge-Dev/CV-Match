@@ -8,7 +8,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { isCaptchaError } from "@/lib/captcha";
 import { useCaptcha } from "@/components/auth/Captcha";
-import { useHydrated } from "@/lib/client/useHydrated";
+import { fieldValue, useHydrated } from "@/lib/client/useHydrated";
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const captcha = useCaptcha();
-  const hydrated = useHydrated();
+  const hydrated = useHydrated(() => setEmail(fieldValue("email")));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

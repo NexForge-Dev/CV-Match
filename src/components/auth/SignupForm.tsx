@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { safeNextPath } from "@/lib/safeNext";
 import { authErrorMessage } from "@/lib/authErrors";
 import { signupMetadata } from "@/lib/billing/consent";
-import { useHydrated } from "@/lib/client/useHydrated";
+import { fieldValue, useHydrated } from "@/lib/client/useHydrated";
 import { useCaptcha } from "./Captcha";
 
 export function SignupForm() {
@@ -25,7 +25,12 @@ export function SignupForm() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const captcha = useCaptcha();
-  const hydrated = useHydrated();
+  const hydrated = useHydrated(() => {
+    setFullName(fieldValue("name"));
+    setEmail(fieldValue("email"));
+    setPassword(fieldValue("password"));
+    setAccepted((document.getElementById("accept-terms") as HTMLInputElement | null)?.checked ?? false);
+  });
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   const plan = params.get("plan");
@@ -98,7 +103,7 @@ export function SignupForm() {
             <p className="mt-1 text-xs text-ink-muted">{t.auth.passwordHint}</p>
           </div>
           <label className="flex items-start gap-2 text-sm text-ink-soft">
-            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required />
+            <input id="accept-terms" type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} required />
             <span>
               {t.auth.acceptTerms}{" "}
               <Link href="/terms" className="link" target="_blank">{t.auth.terms}</Link> ·{" "}
