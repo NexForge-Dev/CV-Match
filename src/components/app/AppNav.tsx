@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Briefcase, CreditCard, FileSearch, FileText, FolderOpen, LayoutDashboard, LogOut, Menu, MessageSquare, Plus, Settings, User, X } from "lucide-react";
 import { Logo } from "@/components/ui";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
+import { clearDrafts } from "@/lib/client/wizardDraft";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -110,7 +111,7 @@ export function AppNav({
         <LocaleSwitcher className="w-full" />
         <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
           <p className="min-w-0 truncate text-xs text-ink-muted" title={email}>{email}</p>
-          <form action="/auth/signout" method="post" className="shrink-0">
+          <form action="/auth/signout" method="post" className="shrink-0" onSubmit={() => clearDrafts()}>
             <button className="btn-ghost btn-sm" aria-label={logoutLabel} title={logoutLabel}>
               <LogOut aria-hidden className="h-4 w-4" />
             </button>

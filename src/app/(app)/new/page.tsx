@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewAnalysisPage({ searchParams }: { searchParams: Promise<{ resume?: string }> }) {
-  const { supabase } = await requireUser("/new");
+  const { user, supabase } = await requireUser("/new");
   const { t } = await getDictionary();
   const { resume: preselect } = await searchParams;
 
@@ -37,6 +37,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t.wizard.title} />
       <NewAnalysisWizard
+        userId={user.id}
         existing={existing}
         savedJobs={(jobs.data ?? []) as SavedJob[]}
         defaultLanguage={(profile.data?.cv_language as "pt" | "es" | "en") ?? "pt"}

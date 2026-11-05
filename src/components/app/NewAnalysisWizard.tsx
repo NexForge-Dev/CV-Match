@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui";
 import { api, errorMessage } from "@/lib/client/api";
 import { emptyCv, type CvData, type CvLanguage } from "@/lib/cv/schema";
 import { useI18n } from "@/lib/i18n/client";
-import { clearDraft, loadDraft, saveDraft, stepFromUrl } from "@/lib/client/wizardDraft";
+import { clearDrafts, loadDraft, saveDraft, stepFromUrl } from "@/lib/client/wizardDraft";
 
 export type ExistingResume = { id: string; title: string; language: string; versionId: string; versionNumber: number };
 export type SavedJob = { id: string; title: string; company: string; language: string };
@@ -19,6 +19,7 @@ type Extraction = { documentId: string; status: "ok" | "low_text" | "needs_ocr" 
 const LANGS: CvLanguage[] = ["pt", "es", "en"];
 
 export function NewAnalysisWizard({
+  userId,
   existing,
   savedJobs,
   defaultLanguage,
@@ -28,6 +29,8 @@ export function NewAnalysisWizard({
   preselectResumeId,
   aiEnabled = false,
 }: {
+  /** Scopes the draft kept in this tab: it holds a CV, and the next person may sign in here. */
+  userId: string;
   existing: ExistingResume[];
   savedJobs: SavedJob[];
   defaultLanguage: CvLanguage;
@@ -77,7 +80,7 @@ export function NewAnalysisWizard({
   const [restored, setRestored] = useState(false);
   const preselected = pre !== undefined;
   useEffect(() => {
-    const draft = preselected ? null : loadDraft();
+    const draft = preselected ? null : loadDraft(userId);
     if (draft) {
       setPasted(draft.pasted);
       setExtraction(draft.extraction);
@@ -95,13 +98,13 @@ export function NewAnalysisWizard({
       setStep(draft.step);
     }
     setRestored(true);
-  }, [preselected]);
+  }, [preselected, userId]);
 
   useEffect(() => {
     if (!restored) return;
-    const timer = setTimeout(() => saveDraft({ step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage }), 300);
+    const timer = setTimeout(() => saveDraft(userId, { step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage }), 300);
     return () => clearTimeout(timer);
-  }, [restored, step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage]);
+  }, [userId, restored, step, pasted, extraction, cv, cvTitle, cvLanguage, formKey, versionId, chosenTitle, jobMode, savedJobId, job, createdJob, outputLanguage]);
 
   // Each step is a history entry, so the phone's back button goes to the previous step instead of leaving.
   useEffect(() => {
@@ -193,7 +196,7 @@ export function NewAnalysisWizard({
       setBusy(null);
       return setError(errorMessage(t, res.error, res.detail));
     }
-    clearDraft();
+    clearDrafts();
     router.push(`/analyses/${res.data.analysisId}`);
   }
 
