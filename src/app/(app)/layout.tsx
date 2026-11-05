@@ -1,7 +1,9 @@
+import { isAdmin } from "@/lib/admin";
 import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { analysesAvailable, getCreditSummary } from "@/lib/server/credits";
 import { AppNav } from "@/components/app/AppNav";
+import { FeedbackWidget } from "@/components/app/FeedbackWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         { href: "/account", label: t.nav.account, icon: "account" as const },
       ],
     },
+    ...(isAdmin(user) ? [{ label: "Admin", items: [{ href: "/admin/feedback", label: "Feedback", icon: "feedback" as const }] }] : []),
   ];
   return (
     <div className="min-h-screen lg:flex">
@@ -35,7 +38,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {t.nav.skip}
       </a>
       <AppNav groups={groups} newAnalysisLabel={t.nav.newAnalysis} availableLabel={t.nav.available(analysesAvailable(credits))} email={user.email ?? ""} logoutLabel={t.nav.logout} />
-      <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
+      <main id="main" className="min-w-0 flex-1 px-4 pb-20 pt-6 sm:px-6 lg:px-10 lg:pt-8">{children}</main>
+      <FeedbackWidget />
     </div>
   );
 }

@@ -107,6 +107,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 - Fact guard against invented certifications, degrees, spoken languages, Unicode/thousand-separated numbers and (for model text) unknown company names
 - DOCX decompression bombs and non-Word ZIPs rejected before parsing; benefits and duplicate requirements never scored; unscorable jobs refused without charging
 - Stripe: out-of-order events, declined renewals, cancellation, superseded subscriptions; subscription quota not consumed by pack/free analyses
+- Feedback: validation, rate limit, nothing identifying reaches the panel, a panel failure never fails the request, the admin guard on the page and the status endpoint
 - RLS: users cannot write `storage_path`, analyses, suggestion text, credits or subscriptions, nor link a version to another user's analysis
 - `npm run smoke`: the full HTTP flow with two real users (upload → review → job → analysis → limits → suggestions → apply → export → isolation → signed Stripe webhook → paid extras → deletions)
 
@@ -129,6 +130,18 @@ All variables are documented in [`.env.example`](./.env.example). Key ones:
 | `LEGAL_OPERATOR_NAME`, `LEGAL_OPERATOR_TAX_ID`, `LEGAL_OPERATOR_ADDRESS` | Provider identity (name, CPF/CNPJ, address) shown on `/legal` and `/privacy` (Decreto 7.962/2013, LGPD). While blank, the pages say it is pending. The contact e-mail is fixed in `src/lib/legal.ts` |
 
 **Plans and prices** are rows in the `plans` table — see [docs/PAYMENTS.md](./docs/PAYMENTS.md).
+
+## Feedback and admin
+
+Logged-in users send suggestions and problem reports from the balloon at the bottom right (`POST /api/feedback`, 10 per hour per user). Each message is saved in `product_feedback`, then copied to the NexForge panel with no name, e-mail or user id. Admins read and triage them at `/admin/feedback`.
+
+An admin is a user with `app_metadata.role = "superadmin"`, which users cannot change themselves. To make a user admin, run this in the Supabase SQL editor (the role applies on their next request):
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "superadmin"}'
+where email = 'owner@example.com';
+```
 
 ## Project structure
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Briefcase, CreditCard, FileSearch, FileText, FolderOpen, LayoutDashboard, LogOut, Menu, Plus, Settings, User, X } from "lucide-react";
+import { Briefcase, CreditCard, FileSearch, FileText, FolderOpen, LayoutDashboard, LogOut, Menu, MessageSquare, Plus, Settings, User, X } from "lucide-react";
 import { Logo } from "@/components/ui";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 
@@ -16,6 +16,7 @@ const ICONS = {
   profile: User,
   billing: CreditCard,
   account: Settings,
+  feedback: MessageSquare,
 } as const;
 
 type Item = { href: string; label: string; icon: keyof typeof ICONS };

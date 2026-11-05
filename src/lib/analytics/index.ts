@@ -2,7 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { env } from "@/lib/env";
 import { log } from "@/lib/log";
-import { createNexforge, type NexforgeClient, type NexforgeEvent } from "./nexforge-client.cjs";
+import { createNexforge, type FeedbackItem, type NexforgeClient, type NexforgeEvent } from "./nexforge-client.cjs";
 
 /**
  * Product metrics for the internal NexForge management panel.
@@ -53,6 +53,19 @@ export function track(event: NexforgeEvent, userId: string | null | undefined, p
     occurredAt: opts.occurredAt,
   });
   flushLater(c);
+}
+
+/**
+ * Copies a message already saved in our database to the panel, waiting at most 2.5 s. This is the only
+ * call that carries free text, so it never takes the author's id. It never throws: the user's message
+ * is safe in our database, and a panel failure is only logged.
+ */
+export async function forwardFeedback(item: FeedbackItem) {
+  try {
+    await nf().feedback(item, 2500);
+  } catch (err) {
+    log.warn("nexforge.feedback_failed", { reason: err instanceof Error ? err.message.slice(0, 80) : "unknown" });
+  }
 }
 
 /** Feature keys allowlisted for CV Match in the panel (Administração → Projetos). */

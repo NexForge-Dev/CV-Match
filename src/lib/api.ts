@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { ZodType } from "zod";
 import type { User } from "@supabase/supabase-js";
+import { isAdmin } from "@/lib/admin";
 import { getApiUser } from "@/lib/auth";
 import { log } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
@@ -52,19 +53,36 @@ export class HttpError extends Error {
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+type Handler<Ctx> = (req: Request, ctx: Ctx, auth: { user: User; supabase: Supabase }) => Promise<Response>;
+
+async function mapErrors(req: Request, run: () => Promise<Response>) {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof HttpError) return apiError(err.code, err.detail);
+    log.error("api.unhandled", { path: new URL(req.url).pathname, error: err instanceof Error ? err.message.slice(0, 80) : "unknown" });
+    return apiError("server_error");
+  }
+}
+
 /** Wraps a route handler: authenticates, maps thrown HttpErrors, never leaks internals. */
-export function withUser<Ctx>(handler: (req: Request, ctx: Ctx, auth: { user: User; supabase: Supabase }) => Promise<Response>) {
-  return async (req: Request, ctx: Ctx) => {
-    try {
+export function withUser<Ctx>(handler: Handler<Ctx>) {
+  return (req: Request, ctx: Ctx) =>
+    mapErrors(req, async () => {
       const { user, supabase } = await getApiUser();
       if (!user) return apiError("unauthorized");
-      return await handler(req, ctx, { user, supabase });
-    } catch (err) {
-      if (err instanceof HttpError) return apiError(err.code, err.detail);
-      log.error("api.unhandled", { path: new URL(req.url).pathname, error: err instanceof Error ? err.message.slice(0, 80) : "unknown" });
-      return apiError("server_error");
-    }
-  };
+      return handler(req, ctx, { user, supabase });
+    });
+}
+
+/** Like withUser for admin-only routes: anyone else, logged in or not, gets a 404, so they don't appear to exist. */
+export function withAdmin<Ctx>(handler: Handler<Ctx>) {
+  return (req: Request, ctx: Ctx) =>
+    mapErrors(req, async () => {
+      const { user, supabase } = await getApiUser();
+      if (!user || !isAdmin(user)) return apiError("not_found");
+      return handler(req, ctx, { user, supabase });
+    });
 }
 
 export async function parseJson<T>(req: Request, schema: ZodType<T>): Promise<T> {

@@ -355,3 +355,62 @@ describe("audit limits on user-writable columns (20261103000008_audit.sql)", () 
     await expect(db.exec(readFileSync(path.join(__dirname, "../supabase/migrations/20261103000008_audit.sql"), "utf8"))).resolves.toBeDefined();
   });
 });
+
+describe("product feedback (20261105000009_product_feedback.sql)", () => {
+  const H = "fb000000-0000-4000-8000-000000000001";
+  const I = "fb000000-0000-4000-8000-000000000002";
+  const submit = (user: string, limit = 10) =>
+    as<{ id: string; status: string; page: string }>("service", "select * from public.submit_product_feedback($1, 'problem', 'Quebrou', '/jobs', $2)", [user, limit]);
+
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email) values ('${H}', 'h@test.dev'), ('${I}', 'i@test.dev');`);
+  });
+
+  it("saves through the server and starts as new", async () => {
+    const [row] = await submit(H);
+    expect(row).toMatchObject({ status: "new", page: "/jobs" });
+  });
+
+  it("client roles cannot touch the table or the function, not even for their own rows", async () => {
+    for (const role of [H, null]) {
+      await expect(as(role, "select * from public.product_feedback")).rejects.toThrow(/permission denied/);
+      await expect(as(role, `insert into public.product_feedback (user_id, kind, message) values ($1, 'problem', 'x')`, [H])).rejects.toThrow(/permission denied/);
+      await expect(as(role, "update public.product_feedback set status = 'resolved'")).rejects.toThrow(/permission denied/);
+      await expect(as(role, "delete from public.product_feedback")).rejects.toThrow(/permission denied/);
+      await expect(as(role, "select * from public.submit_product_feedback($1, 'problem', 'x', '', 10)", [H])).rejects.toThrow(/permission denied/);
+    }
+  });
+
+  it("RLS is on with no policies", async () => {
+    const [{ relrowsecurity }] = (await db.query<{ relrowsecurity: boolean }>("select relrowsecurity from pg_class where oid = 'public.product_feedback'::regclass")).rows;
+    expect(relrowsecurity).toBe(true);
+    expect((await db.query("select 1 from pg_policies where tablename = 'product_feedback'")).rows).toHaveLength(0);
+  });
+
+  it("constraints mirror the app's limits", async () => {
+    const insert = (kind: string, message: string, status = "new") =>
+      as("service", "insert into public.product_feedback (user_id, kind, message, status) values ($1, $2, $3, $4)", [I, kind, message, status]);
+    await expect(insert("praise", "x")).rejects.toThrow(/check constraint/);
+    await expect(insert("problem", "")).rejects.toThrow(/check constraint/);
+    await expect(insert("problem", "a".repeat(4001))).rejects.toThrow(/check constraint/);
+    await expect(insert("problem", "x", "closed")).rejects.toThrow(/check constraint/);
+    await insert("suggestion", "a".repeat(4000));
+    await as("service", "delete from public.product_feedback where user_id = $1", [I]);
+  });
+
+  it("limits each user per hour, counting only that user and that hour", async () => {
+    for (let i = 0; i < 3; i++) await submit(I, 3);
+    await expect(submit(I, 3)).rejects.toThrow("rate_limited");
+    expect(await as("service", "select id from public.product_feedback where user_id = $1", [I])).toHaveLength(3);
+    await expect(submit(H, 3)).resolves.toHaveLength(1);
+
+    await as("service", "update public.product_feedback set created_at = now() - interval '61 minutes' where user_id = $1", [I]);
+    await expect(submit(I, 3)).resolves.toHaveLength(1);
+  });
+
+  it("is deleted with the account", async () => {
+    await db.exec(`delete from auth.users where id = '${H}'`);
+    expect(await as("service", "select id from public.product_feedback where user_id = $1", [H])).toHaveLength(0);
+    expect(await as("service", "select id from public.product_feedback where user_id = $1", [I])).not.toHaveLength(0);
+  });
+});

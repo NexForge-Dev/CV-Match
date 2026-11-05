@@ -15,20 +15,26 @@ const EXPORT_TABLES = [
 ] as const;
 const PAGE = 1000;
 
+async function readAll(fetchPage: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>) {
+  const rows: unknown[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await fetchPage(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) return rows;
+  }
+}
+
 /** GET: export all of the user's data (data portability, LGPD art. 18 V). RLS limits every table to the user's own rows. */
 export const GET = withUser(async (_req, _ctx, { user, supabase }) => {
   const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at } };
   for (const table of EXPORT_TABLES) {
     // The Data API returns at most 1000 rows per request: page through every table.
-    const rows: unknown[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase.from(table).select("*").order(table === "subscriptions" || table === "billing_customers" ? "user_id" : "id").range(from, from + PAGE - 1);
-      if (error) throw error;
-      rows.push(...(data ?? []));
-      if (!data || data.length < PAGE) break;
-    }
-    out[table] = rows;
+    out[table] = await readAll((from, to) => supabase.from(table).select("*").order(table === "subscriptions" || table === "billing_customers" ? "user_id" : "id").range(from, to));
   }
+  // Server-only table: RLS would hide it from the user's client, so it is read as the service role, scoped to this user.
+  const admin = createAdminClient();
+  out.product_feedback = await readAll((from, to) => admin.from("product_feedback").select("id, kind, message, page, status, created_at").eq("user_id", user.id).order("id").range(from, to));
   analytics.feature(user.id, "exportacao_dados");
   return new NextResponse(JSON.stringify(out, null, 2), {
     headers: { "content-type": "application/json", "content-disposition": 'attachment; filename="cv-match-data.json"', "cache-control": "no-store" },

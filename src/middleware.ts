@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdmin } from "@/lib/admin";
 
-const PROTECTED = ["/dashboard", "/new", "/resumes", "/analyses", "/jobs", "/documents", "/profile", "/billing", "/account"];
+const PROTECTED = ["/dashboard", "/new", "/resumes", "/analyses", "/jobs", "/documents", "/profile", "/billing", "/account", "/admin"];
 
 /** Rejects cross-site API writes, refreshes the Supabase session cookie and guards app routes. */
 export async function middleware(request: NextRequest) {
@@ -42,6 +43,12 @@ export async function middleware(request: NextRequest) {
     login.pathname = "/login";
     login.search = `?next=${encodeURIComponent(path)}`;
     return NextResponse.redirect(login);
+  }
+  // Answered here because (app)/loading.tsx makes the page stream: notFound() there would come with status 200.
+  if (user && !isAdmin(user) && (path === "/admin" || path.startsWith("/admin/"))) {
+    const notFound = NextResponse.rewrite(new URL("/__not-found", request.url));
+    response.cookies.getAll().forEach((cookie) => notFound.cookies.set(cookie));
+    return notFound;
   }
   return response;
 }
