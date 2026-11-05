@@ -177,7 +177,7 @@ const en = {
     useText: "Use this text",
     orExisting: "Or use a saved CV",
     useVersion: "Use latest version",
-    heuristicLanguageNote: "Without an AI provider configured, suggestions keep your CV's original wording; headings, guidance and exports use the chosen language, but your content is not translated.",
+    heuristicLanguageNote: "Suggestions keep your CV's original wording; headings, guidance and exports use the chosen language, but your content is not translated.",
     extracted: "Extracted text",
     status: {
       ok: "Text extracted successfully.",
@@ -382,7 +382,7 @@ const en = {
   },
   documents: {
     title: "Documents",
-    subtitle: "Files you uploaded and the text extracted from them. Original files are stored only if enabled, and you can delete them at any time.",
+    subtitle: "Files you uploaded and the text extracted from them. You can delete them at any time.",
     original: "Original file",
     pastedText: "Pasted text",
     stored: "Stored",
@@ -612,7 +612,7 @@ const pt: Dictionary = {
     useText: "Usar este texto",
     orExisting: "Ou use um currículo salvo",
     useVersion: "Usar versão mais recente",
-    heuristicLanguageNote: "Sem um provedor de IA configurado, as sugestões mantêm a redação original do seu currículo; títulos, orientações e exportações usam o idioma escolhido, mas o conteúdo não é traduzido.",
+    heuristicLanguageNote: "As sugestões mantêm a redação original do seu currículo; títulos, orientações e exportações usam o idioma escolhido, mas o conteúdo não é traduzido.",
     extracted: "Texto extraído",
     status: {
       ok: "Texto extraído com sucesso.",
@@ -817,7 +817,7 @@ const pt: Dictionary = {
   },
   documents: {
     title: "Documentos",
-    subtitle: "Arquivos enviados e o texto extraído deles. Os originais só ficam guardados se isso estiver ativado, e você pode excluí-los a qualquer momento.",
+    subtitle: "Arquivos enviados e o texto extraído deles. Você pode excluí-los a qualquer momento.",
     original: "Arquivo original",
     pastedText: "Texto colado",
     stored: "Guardado",
@@ -1045,7 +1045,7 @@ const es: Dictionary = {
     useText: "Usar este texto",
     orExisting: "O usa un currículum guardado",
     useVersion: "Usar la última versión",
-    heuristicLanguageNote: "Sin un proveedor de IA configurado, las sugerencias mantienen la redacción original de tu currículum; los títulos, las indicaciones y las exportaciones usan el idioma elegido, pero el contenido no se traduce.",
+    heuristicLanguageNote: "Las sugerencias mantienen la redacción original de tu currículum; los títulos, las indicaciones y las exportaciones usan el idioma elegido, pero el contenido no se traduce.",
     extracted: "Texto extraído",
     status: {
       ok: "Texto extraído correctamente.",
@@ -1250,7 +1250,7 @@ const es: Dictionary = {
   },
   documents: {
     title: "Documentos",
-    subtitle: "Archivos que has subido y el texto extraído. Los originales solo se guardan si está activado, y puedes eliminarlos cuando quieras.",
+    subtitle: "Archivos que has subido y el texto extraído. Puedes eliminarlos cuando quieras.",
     original: "Archivo original",
     pastedText: "Texto pegado",
     stored: "Guardado",

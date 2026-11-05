@@ -8,6 +8,7 @@ import { requirementSchema } from "@/lib/analysis/requirements";
 import { matchResultSchema, type ScoreBreakdown } from "@/lib/analysis/match";
 import { planFeaturesSchema } from "@/lib/billing/plans";
 import { AnalysisView, type SuggestionRow } from "@/components/app/AnalysisView";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -23,14 +24,14 @@ export default async function AnalysisPage({ params, searchParams }: { params: P
   if (!uuidLike.test(id)) notFound();
   const { supabase } = await requireUser(`/analyses/${id}`);
 
-  const { data: analysis } = await supabase
+  const { data: analysis } = must(await supabase
     .from("analyses")
     .select("id, created_at, language, score, score_breakdown, requirements, results, provider, tier, features, dropped_suggestions, resume_id, resume_version_id, job_descriptions(id, title, company, location, url), resume_versions!analyses_resume_version_id_fkey(version_number), resumes(title)")
     .eq("id", id)
-    .maybeSingle();
+    .maybeSingle());
   if (!analysis) notFound();
 
-  const [{ data: suggestions }, { data: extras }] = await Promise.all([
+  const [suggestionRows, extraRows] = await Promise.all([
     supabase
       .from("suggestions")
       .select("id, kind, section, target_ref, original_text, suggested_text, edited_text, rationale, status, requires_confirmation, confirmed_by_user, flags")
@@ -38,6 +39,8 @@ export default async function AnalysisPage({ params, searchParams }: { params: P
       .order("position"),
     supabase.from("analysis_extras").select("kind, content").eq("analysis_id", id),
   ]);
+  const { data: suggestions } = must(suggestionRows);
+  const { data: extras } = must(extraRows);
 
   const job = one(analysis.job_descriptions as Rel<{ id: string; title: string; company: string; location: string; url: string }>);
   const version = one(analysis.resume_versions as Rel<{ version_number: number }>);

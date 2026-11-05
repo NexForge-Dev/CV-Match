@@ -6,6 +6,7 @@ import { log } from "@/lib/log";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analytics, track } from "@/lib/analytics";
+import { cancelForDeletion } from "@/lib/billing/cancel";
 
 export const runtime = "nodejs";
 
@@ -51,7 +52,7 @@ export const DELETE = withUser(async (req, _ctx, { user, supabase }) => {
   const { data: sub } = await admin.from("subscriptions").select("stripe_subscription_id, status").eq("user_id", user.id).maybeSingle();
   if (sub?.stripe_subscription_id && !["canceled", "incomplete_expired"].includes(sub.status)) {
     if (!env().STRIPE_SECRET_KEY) throw new HttpError("not_configured", "stripe");
-    await getStripe().subscriptions.cancel(sub.stripe_subscription_id);
+    await cancelForDeletion(getStripe(), sub.stripe_subscription_id);
   }
 
   // LGPD: the Stripe customer holds the e-mail address. Deleting it removes that personal data from

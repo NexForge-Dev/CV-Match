@@ -5,8 +5,9 @@ import { I18nProvider } from "@/lib/i18n/client";
 import { getDictionary } from "@/lib/i18n/server";
 
 // Self-hosted at build time, so the Content-Security-Policy (font-src 'self') needs no change.
-const sans = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
-const mono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], variable: "--font-mono", display: "swap" });
+// Only the text face in Latin is preloaded: the other files load on demand through unicode-range.
+const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const mono = IBM_Plex_Mono({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], variable: "--font-mono", display: "swap", preload: false });
 
 export const viewport: Viewport = {
   width: "device-width",

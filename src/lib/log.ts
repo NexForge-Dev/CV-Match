@@ -22,6 +22,13 @@ export function redact(fields: Fields): Fields {
   return out;
 }
 
+/** What a caught error says, safely: a message for Error, the code for a Supabase or Stripe error object. */
+export function errorSummary(err: unknown): string {
+  if (err instanceof Error) return err.message.slice(0, MAX_STRING);
+  const code = (err as { code?: unknown } | null)?.code;
+  return typeof code === "string" && code ? code.slice(0, MAX_STRING) : "unknown";
+}
+
 function write(level: "info" | "warn" | "error", event: string, fields: Fields = {}) {
   if (process.env.NODE_ENV === "test") return;
   const line = JSON.stringify({ level, event, ts: new Date().toISOString(), ...redact(fields) });

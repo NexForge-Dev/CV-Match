@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -14,10 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ResumesPage() {
   const { supabase } = await requireUser("/resumes");
   const { t, locale } = await getDictionary();
-  const { data: resumes } = await supabase
+  const { data: resumes } = must(await supabase
     .from("resumes")
     .select("id, title, language, template, updated_at, resume_versions(count), analyses(count)")
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false }));
 
   return (
     <div className="mx-auto max-w-5xl">

@@ -2,6 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { isAdmin } from "@/lib/admin";
+import { isAuthOutage } from "@/lib/authOutage";
 import { createClient } from "@/lib/supabase/server";
 
 /** For Server Components / pages: returns the user or redirects to login. */
@@ -9,7 +10,9 @@ export async function requireUser(next?: string): Promise<{ user: User; supabase
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+  if (isAuthOutage(error)) throw new Error("auth_unavailable");
   if (!user) redirect(`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
   return { user, supabase };
 }
@@ -26,6 +29,8 @@ export async function getApiUser() {
   const supabase = await createClient();
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
+  if (isAuthOutage(error)) throw new Error("auth_unavailable");
   return { user, supabase };
 }

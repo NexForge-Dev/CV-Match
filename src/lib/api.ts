@@ -4,7 +4,7 @@ import type { ZodType } from "zod";
 import type { User } from "@supabase/supabase-js";
 import { isAdmin } from "@/lib/admin";
 import { getApiUser } from "@/lib/auth";
-import { log } from "@/lib/log";
+import { errorSummary, log } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 
 export type ErrorCode =
@@ -60,7 +60,7 @@ async function mapErrors(req: Request, run: () => Promise<Response>) {
     return await run();
   } catch (err) {
     if (err instanceof HttpError) return apiError(err.code, err.detail);
-    log.error("api.unhandled", { path: new URL(req.url).pathname, error: err instanceof Error ? err.message.slice(0, 80) : "unknown" });
+    log.error("api.unhandled", { path: new URL(req.url).pathname, error: errorSummary(err) });
     return apiError("server_error");
   }
 }

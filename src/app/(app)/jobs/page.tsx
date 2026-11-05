@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -15,11 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function JobsPage() {
   const { supabase } = await requireUser("/jobs");
   const { t, locale } = await getDictionary();
-  const { data } = await supabase
+  const { data } = must(await supabase
     .from("job_descriptions")
     .select("id, title, company, location, url, requirements, created_at, analyses(id)")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(100));
 
   return (
     <div className="mx-auto max-w-5xl">

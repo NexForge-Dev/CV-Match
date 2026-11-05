@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { uuidLike } from "@/lib/api";
 import { cvDataSchema } from "@/lib/cv/schema";
 import { ResumeEditor, type VersionRow } from "@/components/app/ResumeEditor";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -15,10 +16,12 @@ export default async function ResumePage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   if (!uuidLike.test(id)) notFound();
   const { supabase } = await requireUser(`/resumes/${id}`);
-  const [{ data: resume }, { data: versions }] = await Promise.all([
+  const [resumeRow, versionRows] = await Promise.all([
     supabase.from("resumes").select("id, title, language, template").eq("id", id).maybeSingle(),
     supabase.from("resume_versions").select("id, version_number, origin, label, created_at, data").eq("resume_id", id).order("version_number", { ascending: false }),
   ]);
+  const { data: resume } = must(resumeRow);
+  const { data: versions } = must(versionRows);
   if (!resume || !versions?.length) notFound();
 
   const rows: VersionRow[] = versions.map((v) => ({

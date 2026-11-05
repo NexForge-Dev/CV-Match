@@ -35,7 +35,9 @@ export const POST = withUser(async (req, _ctx, { user }) => {
   if (contentType.includes("multipart/form-data")) {
     const declared = Number(req.headers.get("content-length") ?? 0);
     if (declared > e.UPLOAD_MAX_BYTES + 64 * 1024) throw new HttpError("upload_invalid", "too_large");
-    const form = await req.formData();
+    const form = await req.formData().catch(() => {
+      throw new HttpError("invalid_input", "file");
+    });
     const file = form.get("file");
     if (!(file instanceof File)) throw new HttpError("invalid_input", "file");
     const bytes = new Uint8Array(await file.arrayBuffer());

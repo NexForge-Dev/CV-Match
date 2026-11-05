@@ -93,9 +93,11 @@ export async function coverLetter(input: ExtrasInput): Promise<ExtraResult<strin
   const check = checkFacts(r.value, cvToPlainText(input.cv), {
     allowedNumbers: derivedNumbers(input.cv),
     allowedText: `${input.job.title} ${input.job.company}`,
+    // A letter has no reviewer before it is sent: a company or person the CV never names is an invented fact.
+    strictEntities: true,
   });
   if (!check.ok) {
-    log.warn("ai.cover_letter_rejected_by_fact_guard", { numbers: check.newNumbers.length, skills: check.newSkills.length, credentials: check.newCredentials.length });
+    log.warn("ai.cover_letter_rejected_by_fact_guard", { numbers: check.newNumbers.length, skills: check.newSkills.length, credentials: check.newCredentials.length, entities: check.newEntities.length });
     // Honest fallback: the rule-based letter, labelled as such (never presented as the AI result).
     return { value: heuristicCoverLetter(input), usage: noUsage(heuristicProvider.name), fallback: r.usage.provider !== heuristicProvider.name };
   }

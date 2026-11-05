@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { analysesAvailable, getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { CardHeader, PageHeader, ScoreRing, StatCard } from "@/components/ui";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
     supabase.from("suggestions").select("analysis_id", { count: "exact" }).eq("status", "pending").neq("kind", "gap_answer").limit(1),
     getCreditSummary(supabase),
   ]);
+  [profile, resumes, analyses, jobs, pending].forEach(must);
 
   const firstName = (profile.data?.full_name ?? "").split(" ")[0];
   const pendingCount = pending.count ?? 0;
