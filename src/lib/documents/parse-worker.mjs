@@ -27,7 +27,10 @@ async function parseDocx(bytes) {
   return { ok: true, text: result.value ?? "", pages: 0 };
 }
 
-process.once("message", async ({ kind, bytes, maxPages, maxChars }) => {
+// on, not once: the listener keeps the IPC channel open until the parent, having read the answer, kills this
+// process. Exiting right after send() could reach the parent before the message does. If the parent dies the
+// channel closes and this process ends by itself.
+process.on("message", async ({ kind, bytes, maxPages, maxChars }) => {
   let outcome;
   try {
     outcome = kind === "pdf" ? await parsePdf(bytes, maxPages) : await parseDocx(bytes);
