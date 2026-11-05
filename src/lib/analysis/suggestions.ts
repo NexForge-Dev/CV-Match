@@ -6,6 +6,7 @@ import { yearsOfExperience } from "./match";
 import type { Requirement } from "./requirements";
 import { findEvidencedSkills, getSkill, mentionsSkill, skillTerms } from "./taxonomy";
 import { containsTerm, normalize } from "./text";
+import { localizeSkillLabel } from "./skillLabels";
 
 export const SUGGESTION_KINDS = [
   "summary",
@@ -170,7 +171,8 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
   const resultById = new Map(results.map((r) => [r.requirementId, r]));
   const ordered = [...requirements].sort((a, b) => (a.importance === b.importance ? 0 : a.importance === "must" ? -1 : 1));
   const jobSkillIds = ordered.flatMap((r) => r.skillIds);
-  const cvText = cvToPlainText(cv);
+  // A certificate or a course shows knowledge, not use: it cannot back "working with X" or "appears in your experience".
+  const usageText = cvToPlainText({ ...cv, certifications: [], education: [] });
 
   // 1. Summary from verified facts only.
   const foundSkills: string[] = [];
@@ -179,7 +181,7 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
     if (res?.status !== "found" || req.category !== "skill") continue;
     for (const id of req.skillIds) {
       const s = getSkill(id);
-      if (s && mentionsSkill(cvText, s) && !foundSkills.includes(s.label)) foundSkills.push(s.label);
+      if (s && mentionsSkill(usageText, s) && !foundSkills.includes(s.label)) foundSkills.push(s.label);
     }
   }
   const title = cv.contact.headline || cv.experiences[0]?.title || "";
@@ -206,7 +208,7 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
   // 2. Skills: add skills evidenced elsewhere in the CV, then reorder by job relevance.
   const listed = new Set(cv.skills.map(normalize));
   // Only skills with positive evidence ("no experience with X" or "learning X" never qualify).
-  const evidencedNotListed = findEvidencedSkills(cvText)
+  const evidencedNotListed = findEvidencedSkills(usageText)
     .filter((s) => jobSkillIds.includes(s.id) && s.category !== "spoken" && s.category !== "soft")
     .filter((s) => !cv.skills.some((k) => skillTerms(s).includes(normalize(k))) && !listed.has(normalize(s.label)));
   for (const s of evidencedNotListed) {
@@ -299,24 +301,25 @@ export function generateHeuristicSuggestions(input: SuggestionInput): Suggestion
   for (const req of ordered) {
     const res = resultById.get(req.id);
     if (!res) continue;
+    const label = localizeSkillLabel(req.label, language);
     if (res.status === "not_found" && (req.category === "skill" || req.category === "language")) {
       out.push({
         kind: "confirm",
         section: "skills",
-        targetRef: { skill: req.label },
+        targetRef: { skill: label },
         original: "",
         suggested: "",
-        rationale: t.confirm(req.label),
+        rationale: t.confirm(label),
         requiresConfirmation: true,
         flags: [req.importance === "must" ? "must_have" : "nice_to_have"],
       });
     } else if (res.status === "partial") {
       let advice = "";
-      if (res.relatedSkills.length) advice = t.gapRelated(req.label, res.relatedSkills.join(", "));
-      else if (res.notes.includes("years_below_required") || res.notes.includes("years_unverified")) advice = t.gapYears(req.label);
-      else if (res.notes.includes("level_below_required") || res.notes.includes("level_unverified")) advice = t.gapLevel(req.label);
+      if (res.relatedSkills.length) advice = t.gapRelated(label, res.relatedSkills.map((r) => localizeSkillLabel(r, language)).join(", "));
+      else if (res.notes.includes("years_below_required") || res.notes.includes("years_unverified")) advice = t.gapYears(label);
+      else if (res.notes.includes("level_below_required") || res.notes.includes("level_unverified")) advice = t.gapLevel(label);
       if (advice) {
-        out.push({ kind: "gap_answer", section: "general", targetRef: { skill: req.label }, original: "", suggested: advice, rationale: "", requiresConfirmation: false, flags: [] });
+        out.push({ kind: "gap_answer", section: "general", targetRef: { skill: label }, original: "", suggested: advice, rationale: "", requiresConfirmation: false, flags: [] });
       }
     }
   }

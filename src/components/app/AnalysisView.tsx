@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown, Copy, ExternalLink, FileText, Info, Loader2, Lock, SearchX, ShieldCheck } from "lucide-react";
 import type { MatchResult, MatchStatus, ScoreBreakdown } from "@/lib/analysis/match";
 import type { Requirement } from "@/lib/analysis/requirements";
+import { localizeSkillLabel } from "@/lib/analysis/skillLabels";
 import { scoreBand } from "@/lib/analysis/scoreBand";
 import type { PlanFeatures } from "@/lib/billing/plans";
 import { api, errorMessage } from "@/lib/client/api";
@@ -260,7 +261,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           <CardHeader icon={ShieldCheck} title={a.strengths} action={strengths.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("found")}>{a.seeAll}</button> : undefined} />
           {strengths.length ? (
             <ul className="divider-list flex-1">
-              {strengths.slice(0, OVERVIEW_ITEMS).map(({ req }) => <OverviewRow key={req.id} req={req} status="found" />)}
+              {strengths.slice(0, OVERVIEW_ITEMS).map(({ req }) => <OverviewRow key={req.id} req={req} status="found" language={analysis.language} />)}
             </ul>
           ) : (
             <p className="flex-1 px-5 py-6 text-sm text-ink-muted">{a.noStrengths}</p>
@@ -270,7 +271,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           <CardHeader icon={SearchX} title={a.gaps} action={gaps.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("not_found")}>{a.seeAll}</button> : undefined} />
           {gaps.length ? (
             <ul className="divider-list flex-1">
-              {gaps.slice(0, OVERVIEW_ITEMS).map(({ req, res }) => <OverviewRow key={req.id} req={req} status={res.status} />)}
+              {gaps.slice(0, OVERVIEW_ITEMS).map(({ req, res }) => <OverviewRow key={req.id} req={req} status={res.status} language={analysis.language} />)}
             </ul>
           ) : (
             <p className="flex-1 px-5 py-6 text-sm text-ink-muted">{a.noGaps}</p>
@@ -325,7 +326,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
-                        <p className="font-medium text-ink">{req.label}</p>
+                        <p className="break-words font-medium text-ink">{localizeSkillLabel(req.label, analysis.language)}</p>
                         {req.sourceText !== req.label && <p className="mt-0.5 text-xs text-ink-muted">“{req.sourceText}”</p>}
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-1">
@@ -500,14 +501,14 @@ function ExtraPanel({ locked, text, hasContent, busy, onGenerate, children }: { 
   );
 }
 
-function OverviewRow({ req, status }: { req: Requirement; status: MatchStatus }) {
+function OverviewRow({ req, status, language }: { req: Requirement; status: MatchStatus; language: string }) {
   const { t } = useI18n();
   const { Icon, text } = STATUS_STYLE[status];
   return (
     <li className="flex items-center gap-2.5 px-5 py-2.5 text-sm">
       <Icon aria-hidden className={`h-4 w-4 shrink-0 ${text}`} />
       <span className="sr-only">{t.analysis.status[status]}:</span>
-      <span className="min-w-0 flex-1 break-words text-ink">{req.label}</span>
+      <span className="min-w-0 flex-1 break-words text-ink">{localizeSkillLabel(req.label, language)}</span>
       <span className="shrink-0 text-xs text-ink-muted">{req.importance === "must" ? t.analysis.must : t.analysis.nice}</span>
     </li>
   );
