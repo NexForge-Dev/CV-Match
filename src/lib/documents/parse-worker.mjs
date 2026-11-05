@@ -14,11 +14,12 @@ try {
 // killed: a child stuck in synchronous parsing would never see its IPC channel close.
 new Worker(
   `const { workerData } = require("node:worker_threads");
-   const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (err) { return err.code === "EPERM"; } };
+   const { limit, parent } = workerData;
+   const alive = () => { try { process.kill(parent, 0); return process.ppid === parent || process.platform === "win32"; } catch (err) { return err.code === "EPERM"; } };
    setInterval(() => {
-     if (process.memoryUsage.rss() > workerData.limit || !alive(workerData.parent)) process.kill(process.pid, "SIGKILL");
+     if (process.memoryUsage.rss() > limit || !alive()) process.kill(process.pid, "SIGKILL");
    }, 100);`,
-  { eval: true, workerData: { limit: Number(process.argv[2]) * 1024 * 1024, parent: Number(process.argv[3]) } },
+  { eval: true, workerData: { limit: Number(process.argv[2]) * 1024 * 1024, parent: process.ppid } },
 ).unref();
 
 async function loadPdfParser() {

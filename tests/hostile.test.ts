@@ -172,7 +172,7 @@ describe("the isolated parser is killed from outside", () => {
     fs.writeFileSync(script, `
       const { fork } = require("child_process");
       const bytes = new Uint8Array(require("fs").readFileSync(process.argv[2]));
-      const child = fork(${JSON.stringify(PARSER_PATH)}, ["512", String(process.pid)], { execArgv: ["--max-old-space-size=4096"], serialization: "advanced", stdio: ["ignore", "ignore", "ignore", "ipc"] });
+      const child = fork(${JSON.stringify(PARSER_PATH)}, ["512"], { execArgv: ["--max-old-space-size=4096"], serialization: "advanced", stdio: ["ignore", "ignore", "ignore", "ipc"] });
       child.send({ kind: "docx", bytes, maxPages: 1, maxChars: 10 }, () => { console.log(child.pid); setTimeout(() => process.kill(process.pid, "SIGKILL"), 200); });
     `);
     const input = `${script}.docx`;
@@ -203,7 +203,7 @@ describe("the parser's environment (D2)", () => {
   const run = (env: NodeJS.ProcessEnv, bytes: Uint8Array) =>
     new Promise<Record<string, unknown>>((resolve) => {
       const options = parserForkOptions(256);
-      const child = fork(PARSER_PATH, ["512", String(process.pid)], { ...options, env, execArgv: [...(options.execArgv ?? []), `--import=${noPasswd}`] });
+      const child = fork(PARSER_PATH, ["512"], { ...options, env, execArgv: [...(options.execArgv ?? []), `--import=${noPasswd}`] });
       child.once("message", (message) => {
         child.kill("SIGKILL");
         resolve(message as Record<string, unknown>);

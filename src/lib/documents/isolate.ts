@@ -7,7 +7,7 @@ import type { FileKind } from "./validate";
 export type ParseFailure = "timeout" | "crashed" | "unavailable" | "busy" | "too_many_pages" | "corrupt";
 export type ParseOutcome = { ok: true; text: string; pages: number } | { ok: false; reason: ParseFailure };
 
-/** The cost of a PDF grows with its pages. Measured on 1 vCPU, see correcao-cvmatch.md; Lattes CVs run to 60 pages. */
+/** The cost of a PDF grows with its pages. Lattes CVs run to 60 pages; 100 printed pages parse in about 2 s on 1 vCPU. */
 export const MAX_PDF_PAGES = 100;
 /** More than the longest text we keep (MAX_EXTRACTED_CHARS) leaves room for what normalizing removes. */
 const MAX_RAW_CHARS = 300_000;
@@ -92,14 +92,14 @@ function release() {
 
 /** Error codes only: stderr can quote what was being parsed, and CVs never reach the logs. */
 function errorCodes(stderr: string) {
-  return Array.from(new Set(stderr.match(/\b(?:ERR_[A-Z_]+|E[A-Z]{3,})\b/g) ?? [])).slice(0, 3).join(",");
+  return Array.from(new Set(stderr.match(/\b(?:ERR_[A-Z0-9_]+|E(?:NOENT|ACCES|PERM|MFILE|NOMEM|AGAIN))\b/g) ?? [])).slice(0, 3).join(",");
 }
 
 function runChild(kind: FileKind, bytes: Uint8Array, limits: ParseLimits): Promise<ParseOutcome> {
   return new Promise((resolve) => {
     let child: ChildProcess;
     try {
-      child = fork(PARSER_PATH, [String(limits.rssMb), String(process.pid)], parserForkOptions(limits.heapMb));
+      child = fork(PARSER_PATH, [String(limits.rssMb)], parserForkOptions(limits.heapMb));
     } catch {
       log.error("documents.parser_unavailable", { kind, stage: "spawn" });
       resolve({ ok: false, reason: "unavailable" });
