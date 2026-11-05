@@ -56,15 +56,21 @@ export function validateUpload(
     if (!zip.hasWordDocument) return { ok: false, code: "content_mismatch" };
     if (zip.entries > MAX_ZIP_ENTRIES || zip.uncompressedBytes > MAX_ZIP_UNCOMPRESSED || zip.zip64) return { ok: false, code: "unsafe_archive" };
     // The declared sizes can lie: inflate for real, with a hard output cap, before the parser does.
-    if (!inflatesWithin(bytes, MAX_ZIP_UNCOMPRESSED)) return { ok: false, code: "unsafe_archive" };
+    if (!inflatesWithin(bytes, MAX_ZIP_UNCOMPRESSED, MAX_ZIP_MARKUP)) return { ok: false, code: "unsafe_archive" };
   }
 
   return { ok: true, kind, safeName: sanitizeFileName(fileName) };
 }
 
-/** A real CV is a few hundred KB uncompressed; anything near these limits is a decompression bomb. */
-const MAX_ZIP_ENTRIES = 1000;
-const MAX_ZIP_UNCOMPRESSED = 60 * 1024 * 1024;
+/**
+ * A real CV is a few hundred KB of XML plus photos, and a few dozen entries. Parsing cost follows the markup:
+ * 30 KB of DOCX that inflate to 10 MB of minimal paragraphs took 1.7 GB in the parser. Photos do not compress,
+ * so anything that shrinks to under half is counted as markup, whatever its name: mammoth reads the part that
+ * _rels/.rels points to, not necessarily word/document.xml.
+ */
+const MAX_ZIP_ENTRIES = 256;
+const MAX_ZIP_UNCOMPRESSED = 15 * 1024 * 1024;
+const MAX_ZIP_MARKUP = 5 * 1024 * 1024;
 
 export interface ZipInfo {
   entries: number;
@@ -119,9 +125,9 @@ export function inspectZip(bytes: Uint8Array): ZipInfo | null {
 /**
  * Inflates every entry of the archive (from the central directory's local header offsets) with a
  * running output cap. Returns false when the real uncompressed total exceeds `limit`, an entry uses an
- * unsupported compression method, or the data is corrupt.
+ * unsupported compression method, the data is corrupt, or compressible entries add up to more than `markupLimit`.
  */
-export function inflatesWithin(bytes: Uint8Array, limit: number): boolean {
+export function inflatesWithin(bytes: Uint8Array, limit: number, markupLimit = limit): boolean {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let eocd = -1;
   for (let i = bytes.byteLength - 22; i >= Math.max(0, bytes.byteLength - 22 - 0xffff); i--) {
@@ -134,6 +140,7 @@ export function inflatesWithin(bytes: Uint8Array, limit: number): boolean {
   const total = view.getUint16(eocd + 10, true);
   let pos = view.getUint32(eocd + 16, true);
   let remaining = limit;
+  let markup = 0;
   try {
     for (let n = 0; n < total; n++) {
       if (pos + 46 > bytes.byteLength || view.getUint32(pos, true) !== 0x02014b50) return false;
@@ -144,10 +151,13 @@ export function inflatesWithin(bytes: Uint8Array, limit: number): boolean {
       const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
       if (start + compressed > bytes.byteLength) return false;
       const data = bytes.subarray(start, start + compressed);
-      if (method === 0) remaining -= compressed;
-      else if (method === 8) remaining -= inflateRawSync(data, { maxOutputLength: remaining + 1 }).byteLength;
+      let size: number;
+      if (method === 0) size = compressed;
+      else if (method === 8) size = inflateRawSync(data, { maxOutputLength: remaining + 1 }).byteLength;
       else return false;
-      if (remaining < 0) return false;
+      remaining -= size;
+      if (size >= compressed * 2) markup += size;
+      if (remaining < 0 || markup > markupLimit) return false;
       pos += 46 + view.getUint16(pos + 28, true) + view.getUint16(pos + 30, true) + view.getUint16(pos + 32, true);
     }
   } catch {
