@@ -42,6 +42,8 @@ export function extractDateRange(line: string): { start: string; end: string; re
 const BULLET = /^\s*[•\-*·▪●◦–—>]\s*/;
 const EMAIL = /[\w.+-]+@[\w-]+\.[\w.-]+/;
 const PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/;
+/** EMAIL and PHONE backtrack quadratically on a long run of matching characters, and no contact line is this long. */
+const MAX_CONTACT_LINE = 500;
 const LINK = /\b(?:https?:\/\/\S+|(?:www\.)?(?:linkedin\.com|github\.com|gitlab\.com|behance\.net)\/\S+)/gi;
 
 function isBullet(line: string) {
@@ -198,11 +200,12 @@ export function parseCvText(text: string): CvData {
 
   // Contact block from the preamble.
   const pre = preamble.filter(Boolean);
-  const joinedPre = pre.join(" \n ");
-  const email = joinedPre.match(EMAIL)?.[0] ?? "";
-  const phoneMatch = pre.map((l) => l.replace(EMAIL, "")).join(" \n ").match(PHONE)?.[0] ?? "";
+  const contactLine = (l: string) => l.slice(0, MAX_CONTACT_LINE);
+  const contactLines = pre.map(contactLine);
+  const email = contactLines.join(" \n ").match(EMAIL)?.[0] ?? "";
+  const phoneMatch = contactLines.map((l) => l.replace(EMAIL, "")).join(" \n ").match(PHONE)?.[0] ?? "";
   const links = Array.from(new Set(text.match(LINK) ?? [])).slice(0, 5);
-  const isContactLine = (l: string) => EMAIL.test(l) || PHONE.test(l) || /linkedin|github|http/i.test(l);
+  const isContactLine = (l: string) => EMAIL.test(contactLine(l)) || PHONE.test(contactLine(l)) || /linkedin|github|http/i.test(l);
   const nonContact = pre.filter((l) => !isContactLine(l));
   const fullName = nonContact[0] && nonContact[0].length <= 60 ? nonContact[0] : "";
   const headline = nonContact[1] && nonContact[1].length <= 90 ? nonContact[1] : "";

@@ -6,6 +6,8 @@ import { validateUpload } from "@/lib/documents/validate";
 import { extractText, scannedResult, MAX_EXTRACTED_CHARS } from "@/lib/documents/extract";
 import { parseIsolated, MAX_PDF_PAGES } from "@/lib/documents/isolate";
 import { noOcr } from "@/lib/documents/ocr";
+import { parseCvText } from "@/lib/cv/parse";
+import { extractRequirements } from "@/lib/analysis/requirements";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>';
@@ -141,4 +143,39 @@ describe("needs_ocr (CVM-021)", () => {
     expect(r.text.length).toBeLessThanOrEqual(MAX_EXTRACTED_CHARS);
     expect(r.warnings).toContain("truncated");
   });
+});
+
+describe("text pasted into the parsers (CVM-004)", () => {
+  const hostile = {
+    "letters": "a".repeat(60_000),
+    "dotted": "a.".repeat(30_000),
+    "digits": "1".repeat(60_000),
+    "spaced digits": "1 ".repeat(30_000),
+    "at signs": "a@".repeat(30_000),
+    "dashes": "- ".repeat(30_000),
+  };
+
+  for (const [name, text] of Object.entries(hostile)) {
+    it(`parses a line of ${name} in linear time`, () => {
+      const started = performance.now();
+      parseCvText(text);
+      expect(performance.now() - started).toBeLessThan(500);
+    });
+  }
+
+  it("still finds contact data on normal lines", () => {
+    const cv = parseCvText("Ana Souza\nana.souza@example.com | +55 11 91234-5678\n");
+    expect(cv.contact.email).toBe("ana.souza@example.com");
+    expect(cv.contact.phone).toBe("+55 11 91234-5678");
+  });
+});
+
+describe("job text pasted into the parsers (CVM-004)", () => {
+  for (const [name, text] of Object.entries({ letters: "a".repeat(30_000), digits: "1".repeat(30_000), dotted: "a.".repeat(15_000), "at signs": "a@".repeat(15_000) })) {
+    it(`extracts requirements from a line of ${name} in linear time`, () => {
+      const started = performance.now();
+      extractRequirements(text);
+      expect(performance.now() - started).toBeLessThan(500);
+    });
+  }
 });
