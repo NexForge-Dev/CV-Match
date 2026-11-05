@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui";
 import { useI18n } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { authErrorMessage } from "@/lib/authErrors";
+import { useHydrated } from "@/lib/client/useHydrated";
 
 export default function ResetPasswordPage() {
   const { t } = useI18n();
@@ -15,6 +16,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +42,7 @@ export default function ResetPasswordPage() {
             <p className="mt-1 text-xs text-ink-muted">{t.auth.passwordHint}</p>
           </div>
           {error && <Alert tone="error">{error}</Alert>}
-          <button className="btn-primary w-full" disabled={loading}>{loading ? t.common.saving : t.auth.resetButton}</button>
+          <button className="btn-primary w-full" disabled={!hydrated || loading}>{loading ? t.common.saving : t.auth.resetButton}</button>
         </form>
       )}
     </AuthShell>
