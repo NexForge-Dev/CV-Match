@@ -278,7 +278,12 @@ describe("middleware", () => {
   async function visit(path: string, method = "GET", headers: Record<string, string> = {}) {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
-    vi.doMock("@supabase/ssr", () => ({ createServerClient: () => ({ auth: { getUser: async () => ({ data: { user: currentUser } }) } }) }));
+    vi.doMock("@supabase/ssr", () => ({
+      createServerClient: () => ({
+        auth: { getUser: async () => ({ data: { user: currentUser } }) },
+        from: () => ({ select: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+      }),
+    }));
     const { middleware } = await import("@/middleware");
     return middleware(new NextRequest(`http://localhost${path}`, { method, headers }));
   }

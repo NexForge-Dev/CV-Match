@@ -11,7 +11,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <div className="flex min-h-screen flex-col">
-        <header className="flex w-full items-center justify-between gap-3 px-4 py-4 sm:px-8">
+        <header className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-8">
           <Logo />
           <LocaleSwitcher />
         </header>

@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -15,11 +16,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function JobsPage() {
   const { supabase } = await requireUser("/jobs");
   const { t, locale } = await getDictionary();
-  const { data } = await supabase
+  const { data } = must(await supabase
     .from("job_descriptions")
     .select("id, title, company, location, url, requirements, created_at, analyses(id)")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(100));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -32,13 +33,13 @@ export default async function JobsPage() {
               <li key={j.id} className="p-4 sm:px-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-semibold text-ink">{j.title || "—"}</p>
-                    <p className="text-sm text-ink-muted">{[j.company, j.location, formatDate(j.created_at, locale)].filter(Boolean).join(" · ")}</p>
+                    <p className="break-words font-semibold text-ink">{j.title || "—"}</p>
+                    <p className="break-words text-sm text-ink-muted">{[j.company, j.location, formatDate(j.created_at, locale)].filter(Boolean).join(" · ")}</p>
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                       <span className="tag">{t.jobs.requirements((j.requirements as unknown[]).length)}</span>
                       {analyses.length > 0 && <span className="ml-1 text-ink-muted">{t.jobs.analyses}:</span>}
                       {analyses.map((a, i) => (
-                        <Link key={a.id} href={`/analyses/${a.id}`} className="link readout inline-flex min-h-6 items-center">#{i + 1}</Link>
+                        <Link key={a.id} href={`/analyses/${a.id}`} className="link-solo readout min-w-11">#{i + 1}</Link>
                       ))}
                     </p>
                   </div>

@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { EmptyState, PageHeader, ScoreRing } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -18,11 +19,11 @@ const one = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? (v[0] ?? null) : v)
 export default async function AnalysesPage() {
   const { supabase } = await requireUser("/analyses");
   const { t, locale } = await getDictionary();
-  const { data } = await supabase
+  const { data } = must(await supabase
     .from("analyses")
     .select("id, score, created_at, tier, job_descriptions(title, company), resumes(title), resume_versions!analyses_resume_version_id_fkey(version_number)")
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(100));
 
   return (
     <div className="mx-auto max-w-5xl">

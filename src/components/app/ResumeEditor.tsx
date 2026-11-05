@@ -13,6 +13,9 @@ import { api, errorMessage } from "@/lib/client/api";
 import type { CvData, CvLanguage } from "@/lib/cv/schema";
 import { formatDate } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/client";
+import { tabPanelProps, tabProps } from "@/lib/client/tabs";
+
+const VIEWS = ["editor", "preview", "compare"] as const;
 
 export type VersionRow = { id: string; number: number; origin: string; label: string; createdAt: string; cv: CvData };
 type Resume = { id: string; title: string; language: CvLanguage; template: "classic" | "modern" };
@@ -28,7 +31,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
   const [draftState, setDraftState] = useState<{ versionId: string; cv: CvData }>({ versionId: selected.id, cv: selected.cv });
   const draft = draftState.versionId === selected.id ? draftState.cv : selected.cv;
   const setDraft = (cv: CvData) => setDraftState({ versionId: selected.id, cv });
-  const [view, setView] = useState<"editor" | "preview" | "compare">("editor");
+  const [view, setView] = useState<(typeof VIEWS)[number]>("editor");
   const [compareId, setCompareId] = useState(versions[1]?.id ?? versions[0].id);
   const [label, setLabel] = useState("");
   const [settings, setSettings] = useState({ title: resume.title, language: resume.language, template: resume.template });
@@ -83,7 +86,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
     <div className="mx-auto max-w-[1400px]">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <Link href="/resumes" className="text-sm text-ink-muted hover:text-ink">← {t.nav.resumes}</Link>
+          <Link href="/resumes" className="inline-flex min-h-11 items-center text-sm text-ink-muted hover:text-ink sm:min-h-0">← {t.nav.resumes}</Link>
           <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-ink">{resume.title}</h1>
           <p className="text-sm text-ink-muted">{r.version(selected.number)} · {r.origin[selected.origin] ?? selected.origin}{selected.label ? ` · ${versionLabel(selected.label)}` : ""}</p>
         </div>
@@ -99,7 +102,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
       {dirty && <div className="mb-4"><Alert tone="warn">{r.unsaved}</Alert></div>}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-        <aside className="min-w-0 space-y-4">
+        <aside className="min-w-0 space-y-4" aria-label={r.versions}>
           <div className="card p-4">
             <h2 className="mb-2 text-sm font-semibold text-ink">{r.versions}</h2>
             <ul className="max-h-[220px] space-y-1 overflow-y-auto xl:max-h-[340px]">
@@ -114,7 +117,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
                     className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${v.id === selected.id ? "bg-brand-50 text-brand-800" : "hover:bg-slate-50"}`}
                   >
                     <span className="font-medium">{r.version(v.number)}</span>
-                    <span className="block text-xs text-ink-muted">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
+                    <span className="block text-xs text-ink-soft">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
                     {v.label && <span className="block truncate text-xs text-ink-soft">{versionLabel(v.label)}</span>}
                   </button>
                 </li>
@@ -160,23 +163,24 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
 
         <section className="min-w-0">
           <div className="tabs mb-4" role="tablist">
-            {(["editor", "preview", "compare"] as const).map((v) => (
-              <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)} className="tab">
+            {VIEWS.map((v) => (
+              <button key={v} {...tabProps("resume", VIEWS, view, v, setView)} className="tab">
                 {v === "editor" ? r.editor : v === "preview" ? r.preview : <span className="inline-flex items-center gap-1"><GitCompare className="h-3.5 w-3.5" /> {r.compare}</span>}
               </button>
             ))}
           </div>
 
+          <div {...tabPanelProps("resume", view)}>
           {view === "editor" && (
-            <div className="grid gap-6 2xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
               <div className="card min-w-0 p-4 sm:p-6">
                 <CvForm value={draft} onChange={setDraft} formKey={selected.id} />
-                <div className="safe-bottom sticky bottom-0 mt-6 flex flex-wrap items-end gap-3 border-t border-line bg-white pt-4">
-                  <div className="min-w-[200px] flex-1">
-                    <label className="label" htmlFor="v-label">{r.versionLabel}</label>
-                    <input id="v-label" className="input" value={label} maxLength={200} onChange={(e) => setLabel(e.target.value)} />
-                  </div>
-                  <button className="btn-primary" disabled={!dirty || busy !== null} onClick={saveVersion}>
+                <div className="mt-6">
+                  <label className="label" htmlFor="v-label">{r.versionLabel}</label>
+                  <input id="v-label" className="input" value={label} maxLength={200} onChange={(e) => setLabel(e.target.value)} />
+                </div>
+                <div className="safe-bottom sticky bottom-0 mt-3 border-t border-line bg-white pt-3">
+                  <button className="btn-primary w-full sm:w-auto" disabled={!dirty || busy !== null} onClick={saveVersion}>
                     {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {r.saveVersion}
                   </button>
@@ -209,6 +213,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
               <VersionDiff before={compareTo.cv} after={draft} />
             </div>
           )}
+          </div>
         </section>
       </div>
     </div>

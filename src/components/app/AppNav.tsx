@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Briefcase, CreditCard, FileSearch, FileText, FolderOpen, LayoutDashboard, LogOut, Menu, MessageSquare, Plus, Settings, User, X } from "lucide-react";
 import { Logo } from "@/components/ui";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
+import { clearDrafts } from "@/lib/client/wizardDraft";
 
 const ICONS = {
   dashboard: LayoutDashboard,
@@ -37,17 +38,38 @@ export function AppNav({
 }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Mobile menu: lock page scroll behind it and close with Escape (links close it on click).
+  // Mobile menu: lock page scroll behind it, close with Escape (links close it on click), keep keyboard
+  // focus inside it and hand focus back to the toggle on the way out.
   useEffect(() => {
     if (!open) return;
+    const toggle = toggleRef.current;
+    const focusable = () => Array.from(menuRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), select") ?? []);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    focusable()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") return setOpen(false);
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      const first = items[0];
+      const last = items[items.length - 1];
+      const inside = menuRef.current?.contains(document.activeElement);
+      if (e.shiftKey && (document.activeElement === first || !inside)) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
+      toggle?.focus();
     };
   }, [open]);
 
@@ -89,7 +111,7 @@ export function AppNav({
         <LocaleSwitcher className="w-full" />
         <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
           <p className="min-w-0 truncate text-xs text-ink-muted" title={email}>{email}</p>
-          <form action="/auth/signout" method="post" className="shrink-0">
+          <form action="/auth/signout" method="post" className="shrink-0" onSubmit={() => clearDrafts()}>
             <button className="btn-ghost btn-sm" aria-label={logoutLabel} title={logoutLabel}>
               <LogOut aria-hidden className="h-4 w-4" />
             </button>
@@ -101,16 +123,16 @@ export function AppNav({
 
   return (
     <>
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-2 lg:hidden">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between border-b border-line bg-white px-4 py-2 lg:hidden">
         <Logo />
-        <button className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open} aria-controls="mobile-menu">
+        <button ref={toggleRef} className="btn-ghost btn-sm" onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open} aria-controls="mobile-menu">
           {open ? <X aria-hidden className="h-5 w-5" /> : <Menu aria-hidden className="h-5 w-5" />}
         </button>
-      </div>
+      </header>
       {open && (
         <div className="fixed inset-0 z-20 lg:hidden">
           <button aria-label="Menu" tabIndex={-1} className="absolute inset-0 bg-ink/40" onClick={() => setOpen(false)} />
-          <div id="mobile-menu" className="absolute inset-y-0 right-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col overflow-y-auto bg-white px-4 pb-6 pt-20 shadow-raised">
+          <div id="mobile-menu" ref={menuRef} className="absolute inset-y-0 right-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col overflow-y-auto bg-white px-4 pb-6 pt-20 shadow-raised">
             {body}
           </div>
         </div>

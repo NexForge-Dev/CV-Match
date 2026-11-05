@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/i18n/config";
 import { analysesAvailable, getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { CardHeader, PageHeader, ScoreRing, StatCard } from "@/components/ui";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
     supabase.from("suggestions").select("analysis_id", { count: "exact" }).eq("status", "pending").neq("kind", "gap_answer").limit(1),
     getCreditSummary(supabase),
   ]);
+  [profile, resumes, analyses, jobs, pending].forEach(must);
 
   const firstName = (profile.data?.full_name ?? "").split(" ")[0];
   const pendingCount = pending.count ?? 0;
@@ -92,21 +94,21 @@ export default async function DashboardPage() {
           {available === 0 ? (
             <Link href="/billing" className="btn-primary btn-sm">{d.buy}</Link>
           ) : (
-            <Link href="/billing" className="link text-sm">{t.nav.billing}</Link>
+            <Link href="/billing" className="link-solo text-sm">{t.nav.billing}</Link>
           )}
         </StatCard>
         <StatCard icon={ListChecks} label={d.pending} value={pendingCount} hint={pendingCount > 0 ? d.pendingText(pendingCount) : d.nothingPending}>
-          {pendingAnalysis && <Link href={`/analyses/${pendingAnalysis}?tab=suggestions`} className="link text-sm">{d.reviewPending}</Link>}
+          {pendingAnalysis && <Link href={`/analyses/${pendingAnalysis}?tab=suggestions`} className="link-solo text-sm">{d.reviewPending}</Link>}
         </StatCard>
         <StatCard icon={Gauge} label={d.latestScore} value={latest?.score ?? "—"} hint={latest ? formatDate(latest.created_at, locale) : d.latestScoreEmpty}>
-          {latest && <Link href={`/analyses/${latest.id}`} className="link text-sm">{t.common.open}</Link>}
+          {latest && <Link href={`/analyses/${latest.id}`} className="link-solo text-sm">{t.common.open}</Link>}
         </StatCard>
       </div>
 
       {/* grid-cols-1: without an explicit template the column grows to fit long (truncated) titles on phones. */}
       {!blank && <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="card min-w-0 lg:col-span-2">
-          <CardHeader icon={FileSearch} title={d.recentAnalyses} action={<Link href="/analyses" className="link">{d.viewAll}</Link>} />
+          <CardHeader icon={FileSearch} title={d.recentAnalyses} action={<Link href="/analyses" className="link-solo">{d.viewAll}</Link>} />
           {analyses.data?.length ? (
             <ul className="divider-list">
               {analyses.data.map((a) => {
@@ -133,7 +135,7 @@ export default async function DashboardPage() {
 
         <div className="min-w-0 space-y-6">
           <section className="card">
-            <CardHeader icon={FileText} title={d.recentCvs} action={<Link href="/resumes" className="link">{d.viewAll}</Link>} />
+            <CardHeader icon={FileText} title={d.recentCvs} action={<Link href="/resumes" className="link-solo">{d.viewAll}</Link>} />
             {resumes.data?.length ? (
               <ul className="divider-list text-sm">
                 {resumes.data.map((r) => (
@@ -150,7 +152,7 @@ export default async function DashboardPage() {
             )}
           </section>
           <section className="card">
-            <CardHeader icon={Briefcase} title={d.savedJobs} action={<Link href="/jobs" className="link">{d.viewAll}</Link>} />
+            <CardHeader icon={Briefcase} title={d.savedJobs} action={<Link href="/jobs" className="link-solo">{d.viewAll}</Link>} />
             {jobs.data?.length ? (
               <ul className="divider-list text-sm">
                 {jobs.data.map((j) => (

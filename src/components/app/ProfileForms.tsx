@@ -121,7 +121,7 @@ export function SkillBank({ initial }: { initial: { id: string; name: string; le
           {skills.map((s) => (
             <li key={s.id} className="inline-flex items-center rounded-lg border border-line bg-slate-50 pl-2.5 text-sm text-ink-soft">
               {s.name}{s.level ? ` · ${s.level}` : ""}
-              <button onClick={() => remove(s.id)} aria-label={`${t.common.remove} ${s.name}`} className="grid h-9 w-8 place-items-center text-ink-muted transition-colors hover:text-missing">
+              <button onClick={() => remove(s.id)} aria-label={`${t.common.remove} ${s.name}`} className="grid h-11 w-11 place-items-center sm:h-9 sm:w-8 text-ink-muted transition-colors hover:text-missing">
                 <X aria-hidden className="h-3.5 w-3.5" />
               </button>
             </li>

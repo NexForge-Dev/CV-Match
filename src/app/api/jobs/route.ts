@@ -3,10 +3,12 @@ import { z } from "zod";
 import { parseJson, withUser } from "@/lib/api";
 import { cvLanguageSchema } from "@/lib/cv/schema";
 import { extractJobRequirements } from "@/lib/ai/pipeline";
+import { detectInjection } from "@/lib/ai/safety";
 import { titleFromAd } from "@/lib/analysis/jobTitle";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { completeUsage, reserveUsage } from "@/lib/server/usage";
 import { analytics } from "@/lib/analytics";
+import { log } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -15,7 +17,7 @@ const schema = z.object({
   title: z.string().trim().max(200).default(""),
   company: z.string().trim().max(200).default(""),
   location: z.string().trim().max(200).default(""),
-  language: cvLanguageSchema.default("en"),
+  language: cvLanguageSchema.default("pt"),
   url: z
     .string()
     .trim()
@@ -29,6 +31,7 @@ const schema = z.object({
 export const POST = withUser(async (req, _ctx, { user, supabase }) => {
   const body = await parseJson(req, schema);
   const admin = createAdminClient();
+  const injection = detectInjection(body.rawText);
   const usageId = await reserveUsage(admin, user.id, "extract_requirements");
   const extracted = await extractJobRequirements(body.rawText);
   await completeUsage(admin, usageId, extracted.usage);
@@ -48,6 +51,7 @@ export const POST = withUser(async (req, _ctx, { user, supabase }) => {
     .select("id, requirements")
     .single();
   if (error) throw error;
+  if (injection.suspicious) log.warn("jobs.injection_suspected", { userId: user.id, jobId: data.id });
   analytics.feature(user.id, "vaga_adicionada");
   analytics.step(user.id, "vaga_adicionada");
   return NextResponse.json({ jobId: data.id, requirements: data.requirements });

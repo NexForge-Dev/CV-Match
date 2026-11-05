@@ -56,6 +56,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // Document parsers run only on the server and must not be bundled.
   serverExternalPackages: ["pdf-parse", "mammoth", "pdf-lib", "docx"],
+  // Started with fork(), so the file tracer cannot find it on its own.
+  outputFileTracingIncludes: { "/api/documents": ["./src/lib/documents/parse-worker.mjs"] },
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },

@@ -12,7 +12,7 @@ export const STATUS_STYLE: Record<MatchStatus, { cls: string; solid: string; tex
 export function StatusBadge({ status, label }: { status: MatchStatus; label: string }) {
   const { cls, Icon } = STATUS_STYLE[status];
   return (
-    <span className={`badge whitespace-nowrap border ${cls}`}>
+    <span className={`badge border sm:whitespace-nowrap ${cls}`}>
       <Icon aria-hidden className="h-3.5 w-3.5" />
       {label}
     </span>

@@ -9,6 +9,7 @@ import { getCreditSummary, hasActiveSubscription } from "@/lib/server/credits";
 import { Alert, CardHeader, PageHeader, StatCard } from "@/components/ui";
 import { CheckoutButton, PortalButton, TermsConsentCheckbox, TermsConsentProvider } from "@/components/app/BillingButtons";
 import { track } from "@/lib/analytics";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -28,6 +29,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     supabase.from("billing_customers").select("stripe_customer_id").maybeSingle(),
     supabase.from("subscriptions").select("status, cancel_at_period_end").maybeSingle(),
   ]);
+  [ledger, customer, subscription].forEach(must);
   const subscribed = hasActiveSubscription(credits);
   const paymentIssue = ["past_due", "unpaid", "incomplete"].includes(subscription.data?.status ?? "");
   const stripeKey = env().STRIPE_SECRET_KEY ?? "";
@@ -56,7 +58,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             ) : undefined
           }
         >
-          {customer.data && <PortalButton />}
+          {customer.data && subscription.data && <PortalButton />}
         </StatCard>
       </section>
 

@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { must } from "./must";
 
 export interface CreditSummary {
   free_credits: number;
@@ -21,7 +22,7 @@ export function analysesAvailable(c: CreditSummary) {
 }
 
 export async function getCreditSummary(supabase: SupabaseClient): Promise<CreditSummary> {
-  const { data } = await supabase.rpc("credit_summary");
+  const { data } = must(await supabase.rpc("credit_summary"));
   const row = (data as CreditSummary[] | null)?.[0];
   return row ?? { free_credits: 0, paid_credits: 0, plan_id: null, subscription_status: null, period_end: null, period_used: null, period_included: null };
 }

@@ -6,6 +6,7 @@ import { log } from "@/lib/log";
 import { getStripe } from "@/lib/billing/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analytics, track } from "@/lib/analytics";
+import { cancelForDeletion } from "@/lib/billing/cancel";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ async function readAll(fetchPage: (from: number, to: number) => PromiseLike<{ da
 
 /** GET: export all of the user's data (data portability, LGPD art. 18 V). RLS limits every table to the user's own rows. */
 export const GET = withUser(async (_req, _ctx, { user, supabase }) => {
-  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at } };
+  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), user: { id: user.id, email: user.email, created_at: user.created_at, terms_accepted_at: user.user_metadata?.terms_accepted_at ?? null, terms_version: user.user_metadata?.terms_version ?? null } };
   for (const table of EXPORT_TABLES) {
     // The Data API returns at most 1000 rows per request: page through every table.
     out[table] = await readAll((from, to) => supabase.from(table).select("*").order(table === "subscriptions" || table === "billing_customers" ? "user_id" : "id").range(from, to));
@@ -51,7 +52,7 @@ export const DELETE = withUser(async (req, _ctx, { user, supabase }) => {
   const { data: sub } = await admin.from("subscriptions").select("stripe_subscription_id, status").eq("user_id", user.id).maybeSingle();
   if (sub?.stripe_subscription_id && !["canceled", "incomplete_expired"].includes(sub.status)) {
     if (!env().STRIPE_SECRET_KEY) throw new HttpError("not_configured", "stripe");
-    await getStripe().subscriptions.cancel(sub.stripe_subscription_id);
+    await cancelForDeletion(getStripe(), sub.stripe_subscription_id);
   }
 
   // LGPD: the Stripe customer holds the e-mail address. Deleting it removes that personal data from

@@ -9,7 +9,7 @@ export function DemoFlow({ t }: { t: MarketingDict }) {
   const d = t.demo;
   return (
     <figure id="demo" className="min-w-0 scroll-mt-20 rounded-2xl border border-line bg-slate-50 p-3 sm:p-4">
-      <figcaption className="mb-3 flex items-center justify-between gap-3 px-1">
+      <figcaption className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1">
         <span className="text-sm font-semibold text-ink">{d.title}</span>
         <span className="tag shrink-0">{d.example}</span>
       </figcaption>
@@ -59,7 +59,7 @@ export function DemoFlow({ t }: { t: MarketingDict }) {
                   <p className="text-sm font-medium text-ink">{row.label}</p>
                   <p className="text-xs text-ink-muted">{row.note}</p>
                 </div>
-                <div className="shrink-0"><StatusBadge status={status} label={d.statuses[status]} /></div>
+                <div className="max-w-full sm:shrink-0"><StatusBadge status={status} label={d.statuses[status]} /></div>
               </li>
             );
           })}

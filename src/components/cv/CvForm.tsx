@@ -15,7 +15,7 @@ function move<T>(arr: T[], from: number, to: number): T[] {
   return copy;
 }
 
-function Field({ label, value, onChange, textarea = false, rows = 3, id }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean; rows?: number; id: string }) {
+function Field({ label, value, onChange, textarea = false, rows = 3, id, type = "text", autoComplete }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean; rows?: number; id: string; type?: "text" | "email" | "tel"; autoComplete?: string }) {
   return (
     <div>
       <label className="label" htmlFor={id}>{label}</label>
@@ -23,7 +23,7 @@ function Field({ label, value, onChange, textarea = false, rows = 3, id }: { lab
         // Same limits as cvDataSchema, so the browser stops typing instead of the save failing.
         <textarea id={id} className="input" rows={rows} value={value} maxLength={4000} onChange={(e) => onChange(e.target.value)} />
       ) : (
-        <input id={id} className="input" value={value} maxLength={300} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} type={type} autoComplete={autoComplete} className="input" value={value} maxLength={300} onChange={(e) => onChange(e.target.value)} />
       )}
     </div>
   );
@@ -33,7 +33,7 @@ function Field({ label, value, onChange, textarea = false, rows = 3, id }: { lab
  * Lists stored as text keep the raw string while editing so users can type
  * separators freely; the parsed value is written back on every change.
  */
-function ListField({ label, value, onChange, sep, rows = 3, id }: { label: string; value: string[]; onChange: (v: string[]) => void; sep: "line" | "comma"; rows?: number; id: string }) {
+function ListField({ label, value, onChange, sep, rows = 3, id, autoComplete }: { label: string; value: string[]; onChange: (v: string[]) => void; sep: "line" | "comma"; rows?: number; id: string; autoComplete?: string }) {
   const joined = value.join(sep === "line" ? "\n" : ", ");
   return (
     <div>
@@ -42,6 +42,7 @@ function ListField({ label, value, onChange, sep, rows = 3, id }: { label: strin
         id={id}
         className="input"
         rows={rows}
+        autoComplete={autoComplete}
         defaultValue={joined}
         onBlur={(e) => onChange(sep === "line" ? lines(e.target.value) : csv(e.target.value))}
       />
@@ -77,13 +78,13 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
     <div className="space-y-8" key={formKey}>
       <section>
         <h3 className="eyebrow mb-3">{f.contact}</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="c-name" label={f.fullName} value={value.contact.fullName} onChange={(v) => setContact("fullName", v)} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field id="c-name" autoComplete="name" label={f.fullName} value={value.contact.fullName} onChange={(v) => setContact("fullName", v)} />
           <Field id="c-headline" label={f.headline} value={value.contact.headline} onChange={(v) => setContact("headline", v)} />
-          <Field id="c-email" label={f.email} value={value.contact.email} onChange={(v) => setContact("email", v)} />
-          <Field id="c-phone" label={f.phone} value={value.contact.phone} onChange={(v) => setContact("phone", v)} />
+          <Field id="c-email" type="email" autoComplete="email" label={f.email} value={value.contact.email} onChange={(v) => setContact("email", v)} />
+          <Field id="c-phone" type="tel" autoComplete="tel" label={f.phone} value={value.contact.phone} onChange={(v) => setContact("phone", v)} />
           <Field id="c-location" label={f.location} value={value.contact.location} onChange={(v) => setContact("location", v)} />
-          <ListField id="c-links" label={f.links} value={value.contact.links} onChange={(v) => setContact("links", v)} sep="line" rows={2} />
+          <ListField id="c-links" autoComplete="url" label={f.links} value={value.contact.links} onChange={(v) => setContact("links", v)} sep="line" rows={2} />
         </div>
       </section>
 
@@ -101,7 +102,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.experiences.length} onMove={(to) => set("experiences", move(value.experiences, i, to))} onRemove={() => set("experiences", value.experiences.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${e.id}-t`} label={f.jobTitle} value={e.title} onChange={(v) => update({ title: v })} />
                   <Field id={`${e.id}-c`} label={f.company} value={e.company} onChange={(v) => update({ company: v })} />
                   <Field id={`${e.id}-s`} label={f.start} value={e.start} onChange={(v) => update({ start: v })} />
@@ -134,7 +135,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.projects.length} onMove={(to) => set("projects", move(value.projects, i, to))} onRemove={() => set("projects", value.projects.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${p.id}-n`} label={f.projectName} value={p.name} onChange={(v) => update({ name: v })} />
                   <Field id={`${p.id}-l`} label={f.link} value={p.link} onChange={(v) => update({ link: v })} />
                 </div>
@@ -161,7 +162,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
                 <div className="mb-2 flex justify-end">
                   <ItemControls index={i} total={value.education.length} onMove={(to) => set("education", move(value.education, i, to))} onRemove={() => set("education", value.education.filter((_, j) => j !== i))} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <Field id={`${ed.id}-d`} label={f.degree} value={ed.degree} onChange={(v) => update({ degree: v })} />
                   <Field id={`${ed.id}-i`} label={f.institution} value={ed.institution} onChange={(v) => update({ institution: v })} />
                   <Field id={`${ed.id}-s`} label={f.start} value={ed.start} onChange={(v) => update({ start: v })} />
@@ -179,7 +180,7 @@ export function CvForm({ value, onChange, formKey = "cv" }: { value: CvData; onC
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ListField
           id="languages"
           label={f.languages}

@@ -4,7 +4,7 @@ import type { ZodType } from "zod";
 import type { User } from "@supabase/supabase-js";
 import { isAdmin } from "@/lib/admin";
 import { getApiUser } from "@/lib/auth";
-import { log } from "@/lib/log";
+import { errorSummary, log } from "@/lib/log";
 import { createClient } from "@/lib/supabase/server";
 
 export type ErrorCode =
@@ -20,6 +20,7 @@ export type ErrorCode =
   | "extraction_failed"
   | "conflict"
   | "not_configured"
+  | "temporarily_unavailable"
   | "server_error";
 
 const STATUS: Record<ErrorCode, number> = {
@@ -35,6 +36,7 @@ const STATUS: Record<ErrorCode, number> = {
   extraction_failed: 422,
   conflict: 409,
   not_configured: 503,
+  temporarily_unavailable: 503,
   server_error: 500,
 };
 
@@ -60,7 +62,12 @@ async function mapErrors(req: Request, run: () => Promise<Response>) {
     return await run();
   } catch (err) {
     if (err instanceof HttpError) return apiError(err.code, err.detail);
-    log.error("api.unhandled", { path: new URL(req.url).pathname, error: err instanceof Error ? err.message.slice(0, 80) : "unknown" });
+    // Auth did not answer in time: a retry can work, which a 500 does not say.
+    if (err instanceof Error && err.message === "auth_unavailable") {
+      log.warn("api.auth_unavailable", { path: new URL(req.url).pathname });
+      return apiError("temporarily_unavailable", "auth");
+    }
+    log.error("api.unhandled", { path: new URL(req.url).pathname, error: errorSummary(err) });
     return apiError("server_error");
   }
 }

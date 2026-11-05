@@ -187,7 +187,7 @@ export default async function LandingPage() {
             <div className="divide-y divide-line rounded-xl border border-line bg-white">
               {t.faq.items.map((item) => (
                 <details key={item.q} className="group px-5 py-4">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-ink">
+                  <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 font-medium text-ink">
                     {item.q}
                     <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-ink-muted transition-transform group-open:rotate-180" />
                   </summary>

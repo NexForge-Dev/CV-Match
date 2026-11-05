@@ -35,7 +35,9 @@ export const POST = withUser(async (req, _ctx, { user }) => {
   if (contentType.includes("multipart/form-data")) {
     const declared = Number(req.headers.get("content-length") ?? 0);
     if (declared > e.UPLOAD_MAX_BYTES + 64 * 1024) throw new HttpError("upload_invalid", "too_large");
-    const form = await req.formData();
+    const form = await req.formData().catch(() => {
+      throw new HttpError("invalid_input", "file");
+    });
     const file = form.get("file");
     if (!(file instanceof File)) throw new HttpError("invalid_input", "file");
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -45,6 +47,11 @@ export const POST = withUser(async (req, _ctx, { user }) => {
     // Reserved before parsing so every accepted upload counts against the caps, also when no AI runs.
     usageId = await reserveUsage(admin, user.id, "parse_cv");
     extraction = await extractText(bytes, validation.kind);
+    if (extraction.warnings.includes("temporarily_unavailable")) {
+      // Nothing was read and nothing is stored: the retry must not count against the user's limits.
+      await admin.from("usage_events").delete().eq("id", usageId);
+      throw new HttpError("temporarily_unavailable", "parser");
+    }
     fileMeta = { name: validation.safeName, mime: validation.kind === "pdf" ? "application/pdf" : "application/vnd.openxmlformats-officedocument.wordprocessingml.document", kind: validation.kind, size: bytes.byteLength };
 
     if (e.STORE_ORIGINAL_FILES === "true") {

@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { CvData, CvLanguage } from "@/lib/cv/schema";
 import type { MatchResult } from "./match";
 import type { Requirement } from "./requirements";
+import { localizeSkillLabel } from "./skillLabels";
 
 export const interviewItemSchema = z.object({
   requirement: z.string().max(200),
@@ -38,9 +39,9 @@ const L = {
     tMotivation: "Connect the job description to what you have actually done and what you want to learn next.",
   },
   pt: {
-    greeting: (company: string) => (company ? `Prezada equipe de recrutamento da ${company},` : "Prezada equipe de recrutamento,"),
-    intro: (title: string, company: string) => `Escrevo para me candidatar à vaga de ${title || "anunciada"}${company ? ` na ${company}` : ""}.`,
-    current: (role: string, company: string) => `Na função de ${role}${company ? ` na ${company}` : ""}, meu trabalho incluiu:`,
+    greeting: (company: string) => (company ? `Prezada equipe de recrutamento da empresa ${company},` : "Prezada equipe de recrutamento,"),
+    intro: (title: string, company: string) => `Escrevo para me candidatar à vaga ${title ? `de ${title}` : "anunciada"}${company ? ` na empresa ${company}` : ""}.`,
+    current: (role: string, company: string) => `Na função de ${role}${company ? ` na empresa ${company}` : ""}, meu trabalho incluiu:`,
     skills: (s: string) => `Meu currículo mostra experiência prática com ${s}, pontos pedidos pela vaga.`,
     langs: (s: string) => `Idiomas: ${s}.`,
     closing: "Terei prazer em conversar sobre como minha experiência pode contribuir com a equipe. Obrigado pela atenção.",
@@ -51,7 +52,7 @@ const L = {
     tPartial: "Seja honesto sobre o que já fez e explique como a experiência relacionada se aplica. Evite exagerar.",
     qMissing: (r: string) => `A vaga exige ${r}. Como você se prepararia?`,
     tMissing: "Seu currículo não mostra isso. Se você tem experiência real que não está no currículo, cite-a com detalhes; caso contrário, explique seu plano de aprendizado com honestidade.",
-    qMotivation: (c: string) => `Por que você quer trabalhar na ${c || "empresa"} e nesta vaga?`,
+    qMotivation: (c: string) => `Por que você quer trabalhar na empresa${c ? ` ${c}` : ""} e nesta vaga?`,
     tMotivation: "Relacione a descrição da vaga com o que você realmente fez e com o que quer aprender.",
   },
   es: {
@@ -77,7 +78,9 @@ export function heuristicCoverLetter(input: ExtrasInput): string {
   const { cv, requirements, results, language, job } = input;
   const t = L[language];
   const byId = new Map(results.map((r) => [r.requirementId, r]));
-  const found = requirements.filter((r) => r.category === "skill" && byId.get(r.id)?.status === "found").map((r) => r.label);
+  // Evidence only in certificates or courses is not the "practical experience" this letter claims.
+  const used = (r: Requirement) => byId.get(r.id)?.evidence.some((e) => e.section !== "certifications" && e.section !== "education");
+  const found = requirements.filter((r) => r.category === "skill" && byId.get(r.id)?.status === "found" && used(r)).map((r) => r.label);
   const latest = cv.experiences[0];
   const paragraphs: string[] = [t.greeting(job.company), t.intro(job.title, job.company)];
   if (latest?.title) {
@@ -101,9 +104,10 @@ export function heuristicInterviewPrep(input: ExtrasInput): InterviewItem[] {
     const res = byId.get(req.id);
     if (!res || res.status === "ambiguous") continue;
     const evidence = res.evidence.map((e) => e.quote).slice(0, 2);
-    if (res.status === "found") items.push({ requirement: req.label, question: t.qFound(req.label), evidence, tip: t.tFound });
-    else if (res.status === "partial") items.push({ requirement: req.label, question: t.qPartial(req.label), evidence, tip: t.tPartial });
-    else items.push({ requirement: req.label, question: t.qMissing(req.label), evidence: [], tip: t.tMissing });
+    const label = localizeSkillLabel(req.label, language);
+    if (res.status === "found") items.push({ requirement: label, question: t.qFound(label), evidence, tip: t.tFound });
+    else if (res.status === "partial") items.push({ requirement: label, question: t.qPartial(label), evidence, tip: t.tPartial });
+    else items.push({ requirement: label, question: t.qMissing(label), evidence: [], tip: t.tMissing });
   }
   return items.slice(0, 12);
 }

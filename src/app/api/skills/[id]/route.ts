@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { assertUuid, withUser } from "@/lib/api";
+import { HttpError, assertUuid, withUser } from "@/lib/api";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export const DELETE = withUser<Ctx>(async (_req, { params }, { supabase }) => {
   const { id } = await params;
   assertUuid(id);
-  const { error } = await supabase.from("profile_skills").delete().eq("id", id);
+  const { data, error } = await supabase.from("profile_skills").delete().eq("id", id).select("id");
   if (error) throw error;
+  if (!data.length) throw new HttpError("not_found");
   return NextResponse.json({ ok: true });
 });

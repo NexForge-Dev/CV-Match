@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/i18n/server";
 import { analysesAvailable, getCreditSummary } from "@/lib/server/credits";
 import { PageHeader } from "@/components/ui";
 import { NewAnalysisWizard, type ExistingResume, type SavedJob } from "@/components/app/NewAnalysisWizard";
+import { must } from "@/lib/server/must";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getDictionary();
@@ -12,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewAnalysisPage({ searchParams }: { searchParams: Promise<{ resume?: string }> }) {
-  const { supabase } = await requireUser("/new");
+  const { user, supabase } = await requireUser("/new");
   const { t } = await getDictionary();
   const { resume: preselect } = await searchParams;
 
@@ -22,6 +23,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
     supabase.from("job_descriptions").select("id, title, company, language").eq("saved", true).order("created_at", { ascending: false }).limit(20),
     getCreditSummary(supabase),
   ]);
+  [profile, resumes, jobs].forEach(must);
 
   const existing: ExistingResume[] = (resumes.data ?? [])
     .map((r) => {
@@ -35,6 +37,7 @@ export default async function NewAnalysisPage({ searchParams }: { searchParams: 
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t.wizard.title} />
       <NewAnalysisWizard
+        userId={user.id}
         existing={existing}
         savedJobs={(jobs.data ?? []) as SavedJob[]}
         defaultLanguage={(profile.data?.cv_language as "pt" | "es" | "en") ?? "pt"}
