@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowRight, CheckCircle2, ChevronDown, Copy, ExternalLink, FileText, Info, Loader2, Lock, SearchX, ShieldCheck } from "lucide-react";
 import type { MatchResult, MatchStatus, ScoreBreakdown } from "@/lib/analysis/match";
 import type { Requirement } from "@/lib/analysis/requirements";
 import { scoreBand } from "@/lib/analysis/scoreBand";
 import type { PlanFeatures } from "@/lib/billing/plans";
 import { api, errorMessage } from "@/lib/client/api";
+import { tabPanelProps, tabProps } from "@/lib/client/tabs";
 import { formatDate } from "@/lib/i18n/config";
 import { useI18n } from "@/lib/i18n/client";
 import { Alert, CardHeader, ScoreRing, ScoreScale } from "@/components/ui";
@@ -59,6 +60,7 @@ type Props = {
 };
 
 const STATUS_ORDER: MatchStatus[] = ["found", "partial", "not_found", "ambiguous"];
+const TABS = ["requirements", "suggestions", "letter", "interview"] as const;
 const OVERVIEW_ITEMS = 5;
 
 export function AnalysisView({ initialTab, analysis, suggestions: initialSuggestions, letter: initialLetter, interview: initialInterview, extrasFallback = {} }: Props) {
@@ -92,6 +94,11 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
   const pendingCount = reviewable.filter((s) => s.status === "pending").length;
   const acceptedCount = suggestions.filter((s) => s.status === "accepted" && s.kind !== "gap_answer").length;
   const tabsRef = useRef<HTMLDivElement>(null);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  // The buttons that cause these messages sit far below them on phones.
+  useEffect(() => {
+    if (error || notice) feedbackRef.current?.scrollIntoView({ block: "center" });
+  }, [error, notice]);
 
   function showRequirements(status: MatchStatus | "all") {
     setFilter(status);
@@ -163,18 +170,18 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <Link href="/analyses" className="text-sm text-ink-muted hover:text-ink">← {t.nav.analyses}</Link>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink">{analysis.job.title || analysis.job.company || "—"}</h1>
-          <p className="mt-1 text-sm text-ink-soft">
+          <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-ink">{analysis.job.title || analysis.job.company || "—"}</h1>
+          <p className="mt-1 break-words text-sm text-ink-soft">
             {[analysis.job.company, analysis.job.location].filter(Boolean).join(" · ")}
             {analysis.job.url && (
-              <a href={analysis.job.url} target="_blank" rel="noopener noreferrer nofollow" aria-label={t.jobs.viewAd} className="link ml-2 inline-flex items-center gap-1 align-middle">
+              <a href={analysis.job.url} target="_blank" rel="noopener noreferrer nofollow" aria-label={t.jobs.viewAd} className="link ml-2 inline-flex min-h-11 min-w-11 items-center justify-center align-middle sm:min-h-0 sm:min-w-0">
                 <ExternalLink aria-hidden className="h-3.5 w-3.5" />
               </a>
             )}
           </p>
           <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
             <span className="tag">{formatDate(analysis.createdAt, locale)}</span>
-            <Link className="link inline-flex items-center gap-1" href={`/resumes/${analysis.resumeId}`}>
+            <Link className="link-solo min-w-0 gap-1 break-words" href={`/resumes/${analysis.resumeId}`}>
               <FileText aria-hidden className="h-3.5 w-3.5" /> {analysis.resumeTitle} · v{analysis.versionNumber}
             </Link>
             <span>{a.provider[analysis.provider] ?? analysis.provider}</span>
@@ -280,28 +287,31 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
 
       <div ref={tabsRef} className="tabs mb-5 scroll-mt-16 lg:scroll-mt-4" role="tablist">
         {tabs.map((x) => (
-          <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => setTab(x.id)} className="tab">
+          <button key={x.id} {...tabProps("analysis", TABS, tab, x.id, setTab)} className="tab">
             {x.label}
           </button>
         ))}
       </div>
 
-      {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
-      {notice && (
-        <div className="mb-4">
-          <Alert tone="success">
-            {notice.text} <Link className="link" href={`/resumes/${notice.resumeId}`}>{a.openEditor}</Link>
-          </Alert>
-        </div>
-      )}
+      <div ref={feedbackRef} role="status">
+        {error && <div className="mb-4"><Alert tone="error">{error}</Alert></div>}
+        {notice && (
+          <div className="mb-4">
+            <Alert tone="success">
+              {notice.text} <Link className="link" href={`/resumes/${notice.resumeId}`}>{a.openEditor}</Link>
+            </Alert>
+          </div>
+        )}
+      </div>
 
+      <div {...tabPanelProps("analysis", tab)}>
       {tab === "requirements" && (
         <section>
           <div className="mb-3 flex flex-wrap gap-2">
             {(["all", ...STATUS_ORDER] as const).map((s) => (
               <button key={s} aria-pressed={filter === s} className="chip" onClick={() => setFilter(s)}>
                 {s === "all" ? t.common.all : a.status[s]}
-                <span className="readout text-ink-muted">{s === "all" ? analysis.requirements.length : b.counts[s]}</span>
+                <span className="readout">{s === "all" ? analysis.requirements.length : b.counts[s]}</span>
               </button>
             ))}
           </div>
@@ -340,7 +350,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
                           {res.evidence.map((ev, i) => (
                             <blockquote key={i} className="well flex flex-col items-start gap-1 py-2 text-sm text-ink-soft sm:flex-row sm:gap-2">
                               <span className="tag shrink-0 bg-white">{a.sections[ev.section] ?? ev.section}</span>
-                              <span className="min-w-0">{ev.quote}</span>
+                              <span className="min-w-0 max-w-full break-words">{ev.quote}</span>
                             </blockquote>
                           ))}
                         </div>
@@ -456,6 +466,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           )}
         </ExtraPanel>
       )}
+      </div>
     </div>
   );
 }
@@ -496,7 +507,7 @@ function OverviewRow({ req, status }: { req: Requirement; status: MatchStatus })
     <li className="flex items-center gap-2.5 px-5 py-2.5 text-sm">
       <Icon aria-hidden className={`h-4 w-4 shrink-0 ${text}`} />
       <span className="sr-only">{t.analysis.status[status]}:</span>
-      <span className="min-w-0 flex-1 truncate text-ink" title={req.label}>{req.label}</span>
+      <span className="min-w-0 flex-1 break-words text-ink">{req.label}</span>
       <span className="shrink-0 text-xs text-ink-muted">{req.importance === "must" ? t.analysis.must : t.analysis.nice}</span>
     </li>
   );

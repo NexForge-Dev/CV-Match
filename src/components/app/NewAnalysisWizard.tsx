@@ -153,7 +153,7 @@ export function NewAnalysisWizard({
   // The stepper reaches its last step while the analysis runs.
   const current = busy === "analyze" ? 3 : step;
   const stepper = (
-    <ol className="mb-6 flex items-center" aria-label={w.stepOf(current + 1, w.steps.length)}>
+    <ol className="mb-6 flex flex-wrap items-center gap-y-2" aria-label={w.stepOf(current + 1, w.steps.length)}>
       {w.steps.map((label, i) => (
         <li key={label} aria-current={i === current ? "step" : undefined} className="flex flex-1 items-center gap-2 last:flex-none">
           <span className={`readout grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold ${i === current ? "bg-brand-600 text-white" : i < current ? "bg-brand-50 text-brand-700" : "bg-slate-200 text-ink-muted"}`}>

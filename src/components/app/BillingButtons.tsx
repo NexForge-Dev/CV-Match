@@ -10,23 +10,35 @@ import { useI18n } from "@/lib/i18n/client";
  * Terms and the 7-day refund policy. One checkbox covers every CheckoutButton inside the provider; the server
  * rejects a checkout without it.
  */
-const TermsConsentContext = createContext<{ accepted: boolean; setAccepted: (v: boolean) => void }>({ accepted: false, setAccepted: () => {} });
+const TermsConsentContext = createContext<{ accepted: boolean; setAccepted: (v: boolean) => void; missing: boolean; setMissing: (v: boolean) => void }>({ accepted: false, setAccepted: () => {}, missing: false, setMissing: () => {} });
+const CONSENT_ID = "terms-consent";
 
 export function TermsConsentProvider({ children }: { children: ReactNode }) {
   const [accepted, setAccepted] = useState(false);
-  return <TermsConsentContext.Provider value={{ accepted, setAccepted }}>{children}</TermsConsentContext.Provider>;
+  const [missing, setMissing] = useState(false);
+  return <TermsConsentContext.Provider value={{ accepted, setAccepted, missing, setMissing }}>{children}</TermsConsentContext.Provider>;
 }
 
 export function TermsConsentCheckbox() {
   const { t } = useI18n();
-  const { accepted, setAccepted } = useContext(TermsConsentContext);
+  const { accepted, setAccepted, missing, setMissing } = useContext(TermsConsentContext);
   return (
     <label className="card flex cursor-pointer items-start gap-3 p-4 text-sm text-ink-soft">
-      <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+      <input
+        id={CONSENT_ID}
+        type="checkbox"
+        className="mt-0.5 h-5 w-5 shrink-0"
+        checked={accepted}
+        onChange={(e) => {
+          setAccepted(e.target.checked);
+          setMissing(false);
+        }}
+      />
       <span>
         {t.billing.termsConsent}{" "}
         <a href="/terms" className="link" target="_blank" rel="noopener">{t.auth.terms}</a>
         <span className="mt-1 block text-xs text-ink-muted">{t.billing.termsConsentHint}</span>
+        {missing && <span className="mt-1 block text-xs font-medium text-missing-ink" role="alert">{t.errors.terms_consent_required}</span>}
       </span>
     </label>
   );
@@ -34,11 +46,18 @@ export function TermsConsentCheckbox() {
 
 export function CheckoutButton({ planId, label, disabled }: { planId: string; label: string; disabled?: boolean }) {
   const { t } = useI18n();
-  const { accepted } = useContext(TermsConsentContext);
+  const { accepted, setMissing } = useContext(TermsConsentContext);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   async function go() {
-    if (!accepted) return setError(t.errors.terms_consent_required);
+    if (!accepted) {
+      // The checkbox is above the plans, out of view on phones.
+      setMissing(true);
+      const box = document.getElementById(CONSENT_ID);
+      box?.scrollIntoView({ block: "center" });
+      box?.focus({ preventScroll: true });
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await api<{ url: string }>("/api/billing/checkout", { method: "POST", json: { planId, termsAccepted: true } });

@@ -7,6 +7,11 @@ html {
   scroll-behavior: smooth;
 }
 
+/* A focused field must not end up behind a sticky action bar. */
+html:has(.safe-bottom) {
+  scroll-padding-bottom: 7rem;
+}
+
 body {
   @apply bg-slate-50 text-ink;
   font-feature-settings: "cv11", "ss03";
@@ -31,7 +36,7 @@ body {
 @layer components {
   /* ---------- Buttons ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-0;
   }
   .btn-primary {
     @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
@@ -50,7 +55,7 @@ body {
   }
   /* 44px touch target on phones, compact on larger screens. */
   .btn-sm {
-    @apply min-h-11 px-3 py-1.5 text-xs sm:min-h-0;
+    @apply min-h-11 min-w-11 px-3 py-1.5 text-xs sm:min-h-0 sm:min-w-0;
   }
   .btn-lg {
     @apply px-6 py-3 text-base;
@@ -98,6 +103,10 @@ body {
   .link {
     @apply font-medium text-brand-600 hover:text-brand-700 hover:underline;
   }
+  /* A link on its own, not inside a sentence: 44px touch target on phones. */
+  .link-solo {
+    @apply link inline-flex min-h-11 items-center sm:min-h-0;
+  }
   .readout {
     @apply font-mono tabular-nums tracking-tight;
   }
@@ -112,11 +121,10 @@ body {
 
   /* ---------- Tabs and filters ---------- */
   .tabs {
-    @apply flex gap-1 overflow-x-auto border-b border-line;
-    scrollbar-width: none;
+    @apply flex flex-wrap gap-x-1 border-b border-line;
   }
   .tab {
-    @apply -mb-px whitespace-nowrap border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:text-ink;
+    @apply -mb-px min-h-11 border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:text-ink;
   }
   .tab[aria-selected="true"] {
     @apply border-brand-600 text-brand-700;

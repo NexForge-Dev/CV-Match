@@ -32,13 +32,13 @@ export default async function JobsPage() {
               <li key={j.id} className="p-4 sm:px-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-semibold text-ink">{j.title || "—"}</p>
-                    <p className="text-sm text-ink-muted">{[j.company, j.location, formatDate(j.created_at, locale)].filter(Boolean).join(" · ")}</p>
+                    <p className="break-words font-semibold text-ink">{j.title || "—"}</p>
+                    <p className="break-words text-sm text-ink-muted">{[j.company, j.location, formatDate(j.created_at, locale)].filter(Boolean).join(" · ")}</p>
                     <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
                       <span className="tag">{t.jobs.requirements((j.requirements as unknown[]).length)}</span>
                       {analyses.length > 0 && <span className="ml-1 text-ink-muted">{t.jobs.analyses}:</span>}
                       {analyses.map((a, i) => (
-                        <Link key={a.id} href={`/analyses/${a.id}`} className="link readout inline-flex min-h-6 items-center">#{i + 1}</Link>
+                        <Link key={a.id} href={`/analyses/${a.id}`} className="link-solo readout min-w-11">#{i + 1}</Link>
                       ))}
                     </p>
                   </div>

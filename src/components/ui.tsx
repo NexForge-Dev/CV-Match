@@ -5,11 +5,11 @@ import { BAND_COLORS, BAND_LIMITS, scoreBand } from "@/lib/analysis/scoreBand";
 
 type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 
-export function Logo({ className = "", inverted = false }: { className?: string; inverted?: boolean }) {
+export function Logo({ className = "", inverted = false, compact = false }: { className?: string; inverted?: boolean; compact?: boolean }) {
   return (
-    <Link href="/" className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-bold ${inverted ? "text-white" : "text-ink"} ${className}`}>
+    <Link href="/" aria-label="CV Match" className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-bold ${inverted ? "text-white" : "text-ink"} ${className}`}>
       <span className={`grid h-8 w-8 place-items-center rounded-lg text-sm ${inverted ? "bg-white text-brand-700" : "bg-brand-600 text-white"}`}>CV</span>
-      <span className="text-lg tracking-tight">
+      <span className={`text-lg tracking-tight ${compact ? "max-[339px]:hidden" : ""}`}>
         CV <span className={inverted ? "text-brand-200" : "text-brand-600"}>Match</span>
       </span>
     </Link>
@@ -25,7 +25,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: string; 
             ← {back.label}
           </Link>
         )}
-        <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+        <h1 className="break-words text-2xl font-bold tracking-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 max-w-2xl text-sm text-ink-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
