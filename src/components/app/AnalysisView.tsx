@@ -170,7 +170,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
     <div className="mx-auto max-w-6xl">
       <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
-          <Link href="/analyses" className="text-sm text-ink-muted hover:text-ink">← {t.nav.analyses}</Link>
+          <Link href="/analyses" className="inline-flex min-h-11 items-center text-sm text-ink-muted hover:text-ink sm:min-h-0">← {t.nav.analyses}</Link>
           <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-ink">{analysis.job.title || analysis.job.company || "—"}</h1>
           <p className="mt-1 break-words text-sm text-ink-soft">
             {[analysis.job.company, analysis.job.location].filter(Boolean).join(" · ")}
@@ -247,7 +247,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
         <div className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-ink-soft sm:px-6 lg:col-span-2 lg:rounded-b-xl">
           <p className="flex gap-2"><Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /> {a.scoreDisclaimer}</p>
           <details className="group mt-1 pl-6">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-1 font-medium text-brand-700">
+            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 font-medium text-brand-700 sm:min-h-0">
               {a.howCalculated}
               <ChevronDown aria-hidden className="h-4 w-4 transition-transform group-open:rotate-180" />
             </summary>
@@ -258,7 +258,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <section className="card flex min-w-0 flex-col">
-          <CardHeader icon={ShieldCheck} title={a.strengths} action={strengths.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("found")}>{a.seeAll}</button> : undefined} />
+          <CardHeader icon={ShieldCheck} title={a.strengths} action={strengths.length > OVERVIEW_ITEMS ? <button className="link-solo" onClick={() => showRequirements("found")}>{a.seeAll}</button> : undefined} />
           {strengths.length ? (
             <ul className="divider-list flex-1">
               {strengths.slice(0, OVERVIEW_ITEMS).map(({ req }) => <OverviewRow key={req.id} req={req} status="found" language={analysis.language} />)}
@@ -268,7 +268,7 @@ export function AnalysisView({ initialTab, analysis, suggestions: initialSuggest
           )}
         </section>
         <section className="card flex min-w-0 flex-col">
-          <CardHeader icon={SearchX} title={a.gaps} action={gaps.length > OVERVIEW_ITEMS ? <button className="link" onClick={() => showRequirements("not_found")}>{a.seeAll}</button> : undefined} />
+          <CardHeader icon={SearchX} title={a.gaps} action={gaps.length > OVERVIEW_ITEMS ? <button className="link-solo" onClick={() => showRequirements("not_found")}>{a.seeAll}</button> : undefined} />
           {gaps.length ? (
             <ul className="divider-list flex-1">
               {gaps.slice(0, OVERVIEW_ITEMS).map(({ req, res }) => <OverviewRow key={req.id} req={req} status={res.status} language={analysis.language} />)}

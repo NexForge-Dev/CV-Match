@@ -5,7 +5,7 @@ import type { MarketingDict } from "@/lib/i18n/marketing";
 import { LEGAL_CONTACT_EMAIL } from "@/lib/legal";
 
 export function MarketingFooter({ t }: { t: MarketingDict }) {
-  const linkCls = "text-ink-soft transition-colors hover:text-ink";
+  const linkCls = "inline-flex min-h-11 items-center text-ink-soft transition-colors hover:text-ink sm:min-h-0";
   return (
     <footer className="border-t border-line bg-white">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 py-10 md:grid-cols-[2fr_1fr_1fr]">

@@ -7,9 +7,9 @@ type IconType = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
 
 export function Logo({ className = "", inverted = false, compact = false }: { className?: string; inverted?: boolean; compact?: boolean }) {
   return (
-    <Link href="/" aria-label="CV Match" className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap font-bold ${inverted ? "text-white" : "text-ink"} ${className}`}>
+    <Link href="/" className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap font-bold ${inverted ? "text-white" : "text-ink"} ${className}`}>
       <span className={`grid h-8 w-8 place-items-center rounded-lg text-sm ${inverted ? "bg-white text-brand-700" : "bg-brand-600 text-white"}`}>CV</span>
-      <span className={`text-lg tracking-tight ${compact ? "max-[339px]:hidden" : ""}`}>
+      <span className={`text-lg tracking-tight ${compact ? "max-[339px]:sr-only" : ""}`}>
         CV <span className={inverted ? "text-brand-200" : "text-brand-600"}>Match</span>
       </span>
     </Link>
@@ -21,7 +21,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: string; 
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between lg:mb-8">
       <div className="min-w-0">
         {back && (
-          <Link href={back.href} className="mb-1 inline-block text-sm text-ink-muted hover:text-ink">
+          <Link href={back.href} className="mb-1 inline-flex min-h-11 items-center text-sm text-ink-muted hover:text-ink sm:min-h-0">
             ← {back.label}
           </Link>
         )}

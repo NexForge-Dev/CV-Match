@@ -86,7 +86,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
     <div className="mx-auto max-w-[1400px]">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <Link href="/resumes" className="text-sm text-ink-muted hover:text-ink">← {t.nav.resumes}</Link>
+          <Link href="/resumes" className="inline-flex min-h-11 items-center text-sm text-ink-muted hover:text-ink sm:min-h-0">← {t.nav.resumes}</Link>
           <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-ink">{resume.title}</h1>
           <p className="text-sm text-ink-muted">{r.version(selected.number)} · {r.origin[selected.origin] ?? selected.origin}{selected.label ? ` · ${versionLabel(selected.label)}` : ""}</p>
         </div>
@@ -117,7 +117,7 @@ export function ResumeEditor({ resume, versions }: { resume: Resume; versions: V
                     className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${v.id === selected.id ? "bg-brand-50 text-brand-800" : "hover:bg-slate-50"}`}
                   >
                     <span className="font-medium">{r.version(v.number)}</span>
-                    <span className="block text-xs text-ink-muted">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
+                    <span className="block text-xs text-ink-soft">{r.origin[v.origin] ?? v.origin} · {formatDate(v.createdAt, locale)}</span>
                     {v.label && <span className="block truncate text-xs text-ink-soft">{versionLabel(v.label)}</span>}
                   </button>
                 </li>
